@@ -1,6 +1,6 @@
 const TWENTY_FIRST_KEY = 'an_sk_f5835a496ebb15a8abe2b11dae3de1a37915ac38a1feee3163be371f0822623b'
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')

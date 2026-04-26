@@ -1,5 +1,5 @@
-const Anthropic = require('@anthropic-ai/sdk')
-const cheerio = require('cheerio')
+import Anthropic from '@anthropic-ai/sdk'
+import * as cheerio from 'cheerio'
 
 function extractColors(html, $) {
   const colors = new Map()
@@ -42,7 +42,7 @@ function extractSocial($) {
   return s
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
     const target = url.startsWith('http') ? url : `https://${url}`
     const response = await fetch(target, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SiteForge/1.0)' },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(10000),
     })
     const html = await response.text()
     const $ = cheerio.load(html)
@@ -87,13 +87,13 @@ Meta description: ${metaDesc}
 Theme color: ${themeColor}
 Detected colors: ${allColors.join(', ')}
 Detected fonts: ${fonts.join(', ')}
-Page content (first 8000 chars): ${cleanText}
+Page content: ${cleanText}
 
 Return this exact JSON structure:
 {
   "name": "business name",
   "tagline": "an improved, powerful tagline",
-  "description": "2 compelling sentences about what they do and the value they provide",
+  "description": "2 compelling sentences about what they do and value they provide",
   "industry": "specific industry label",
   "tone": "one of: professional | bold | playful | minimal | luxury | corporate",
   "aesthetic": "one of: modern | classic | tech | creative | warm | cool",

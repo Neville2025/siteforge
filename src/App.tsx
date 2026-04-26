@@ -566,8 +566,16 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
       }
       raw = raw.trim().replace(/^```json\n?|```$/g, '').trim()
       let site
-      try { site = JSON.parse(raw) }
-      catch { throw new Error('AI returned invalid JSON. Try again with simpler info.') }
+      try {
+        site = JSON.parse(raw)
+      } catch (e) {
+        // Try to recover: cut off at last complete object boundary
+        const lastValidEnd = raw.lastIndexOf('}]}]}')
+        if (lastValidEnd > 0) {
+          try { site = JSON.parse(raw.slice(0, lastValidEnd + 5)) } catch {}
+        }
+        if (!site) throw new Error(`AI response was truncated. Try again — usually works on second attempt.`)
+      }
       store.loadSite(site)
       onClose()
     } catch (err: unknown) {

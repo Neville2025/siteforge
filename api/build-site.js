@@ -36,7 +36,7 @@ export default async function handler(req, res) {
 
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 16000,
+      max_tokens: 32000,
       messages: [{
         role: 'user',
         content: `You are a senior web designer building a complete multi-page website. Generate a JSON structure for ${business.name} based on the business info below.

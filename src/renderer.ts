@@ -60,6 +60,10 @@ function nav(site: SiteData, _activePage: Page, _theme: Theme) {
 <div style="height:64px"></div>`
 }
 
+function wrapSection(secId: string, html: string): string {
+  return html.replace(/^(<section)/, `<section data-section-id="${secId}"`)
+}
+
 function renderSection(sec: Section, theme: Theme): string {
   const d = sec.data
   const dark = theme.style === 'dark'
@@ -342,8 +346,48 @@ function aosScript(): string {
 </script>`
 }
 
-export function renderPage(site: SiteData, page: Page): string {
+export function renderPage(site: SiteData, page: Page, interactive = false): string {
   const theme = site.theme
+  const sectionsHtml = page.sections.map(sec => {
+    const h = renderSection(sec, theme)
+    return interactive ? wrapSection(sec.id, h) : h
+  }).join('\n')
+
+  const interactiveScript = interactive ? `
+<style>
+  [data-section-id] { position: relative; cursor: pointer; transition: outline 0.15s; outline: 2px solid transparent; outline-offset: -2px }
+  [data-section-id]:hover { outline-color: ${theme.primaryColor}88 }
+  [data-section-id].sf-active { outline-color: ${theme.primaryColor} !important; outline-width: 3px }
+  [data-section-id]::before {
+    content: attr(data-sf-label); position: absolute; top: 8px; left: 8px;
+    background: ${theme.primaryColor}; color: #fff; padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 700; opacity: 0; transition: opacity 0.15s; z-index: 99; pointer-events: none;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  [data-section-id]:hover::before, [data-section-id].sf-active::before { opacity: 1 }
+</style>
+<script>
+  document.querySelectorAll('[data-section-id]').forEach(el => {
+    const id = el.getAttribute('data-section-id');
+    el.setAttribute('data-sf-label', '✏️ Edit');
+    el.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.querySelectorAll('[data-section-id]').forEach(s => s.classList.remove('sf-active'));
+      el.classList.add('sf-active');
+      window.parent.postMessage({ type: 'section-click', id }, '*');
+    }, true);
+  });
+  // Listen for active section update from parent
+  window.addEventListener('message', e => {
+    if (e.data && e.data.type === 'set-active' && e.data.id) {
+      document.querySelectorAll('[data-section-id]').forEach(s => s.classList.remove('sf-active'));
+      const target = document.querySelector('[data-section-id="' + e.data.id + '"]');
+      if (target) { target.classList.add('sf-active'); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }
+  });
+</script>` : ''
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -356,9 +400,10 @@ export function renderPage(site: SiteData, page: Page): string {
 </head>
 <body>
   ${nav(site, page, theme)}
-  ${page.sections.map(sec => renderSection(sec, theme)).join('\n')}
+  ${sectionsHtml}
   ${footer(site, theme)}
   ${aosScript().split('</link>').slice(1).join('')}
+  ${interactiveScript}
 </body>
 </html>`
 }
@@ -367,7 +412,7 @@ export function exportSite(site: SiteData): Record<string, string> {
   const files: Record<string, string> = {}
   site.pages.forEach(page => {
     const filename = page.slug === '/' ? 'index.html' : page.slug.slice(1) + '.html'
-    files[filename] = renderPage(site, page)
+    files[filename] = renderPage(site, page, false)
   })
   return files
 }

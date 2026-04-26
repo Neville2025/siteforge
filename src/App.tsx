@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import JSZip from 'jszip'
 import { useStore, getActivePage, getActiveSection } from './store'
@@ -41,20 +41,42 @@ function Label({ children }: any) {
 function SiteCanvas({ B }: { B: typeof DARK }) {
   const store = useStore()
   const page = getActivePage(store)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Listen for clicks from inside the iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'section-click' && e.data.id) {
+        store.setActiveSection(e.data.id)
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [store])
+
+  // Send the active section to the iframe so it highlights it
+  useEffect(() => {
+    if (!iframeRef.current?.contentWindow || !store.activeSectionId) return
+    iframeRef.current.contentWindow.postMessage({ type:'set-active', id:store.activeSectionId }, '*')
+  }, [store.activeSectionId])
+
   if (!page) return null
-  const html = renderPage(store.site, page)
+  const html = renderPage(store.site, page, true)
+  const exportHtml = renderPage(store.site, page, false)
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', background:B.surface, overflow:'hidden' }}>
-      {/* Viewport toggle */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'8px 16px', borderBottom:`1px solid ${B.border}`, background:B.bg, flexShrink:0 }}>
-        <div style={{ fontSize:11, color:B.muted, marginRight:8 }}>Live Preview — {page.name}</div>
-        <button onClick={()=>{ const w=window.open('','_blank'); w?.document.write(html); w?.document.close() }}
+        <div style={{ fontSize:11, color:B.muted, marginRight:8 }}>
+          <strong style={{ color:B.text }}>{page.name}</strong> — Click any section in the preview to edit it
+        </div>
+        <button onClick={()=>{ const w=window.open('','_blank'); w?.document.write(exportHtml); w?.document.close() }}
           style={{ fontSize:10, padding:'4px 10px', borderRadius:6, background:B.card, border:`1px solid ${B.border}`, color:B.muted, cursor:'pointer' }}>
           ⛶ Full Tab
         </button>
       </div>
       <iframe
-        key={page.id + JSON.stringify(store.site.theme)}
+        ref={iframeRef}
+        key={page.id + JSON.stringify(store.site.theme) + page.sections.length}
         srcDoc={html}
         style={{ flex:1, border:'none', width:'100%' }}
         title="Preview"
@@ -507,7 +529,7 @@ export default function App() {
   const previewFull = () => {
     const page = getActivePage(store)
     if (!page) return
-    const html = renderPage(store.site, page)
+    const html = renderPage(store.site, page, false)
     const w = window.open('', '_blank')
     w?.document.write(html)
     w?.document.close()

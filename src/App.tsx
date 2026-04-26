@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import JSZip from 'jszip'
 import { useStore, getActivePage, getActiveSection } from './store'
 import { SECTION_DEFS, SECTION_GROUPS } from './sections'
+import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
 import { exportSite, renderPage } from './renderer'
-import type { SectionType, Theme, Component21st } from './types'
+import { v4 as uuid } from 'uuid'
+import type { SectionType, Theme } from './types'
 import './index.css'
 
 // ── Theme tokens ──────────────────────────────────────────────
@@ -137,10 +139,8 @@ function RightPanel({ B }: { B: typeof DARK }) {
   const [tab, setTab] = useState<'edit'|'theme'|'ai'|'components'>('edit')
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
-  const [components, setComponents] = useState<Component21st[]>([])
-  const [compQuery, setCompQuery] = useState('')
-  const [compLoading, setCompLoading] = useState(false)
-  const [selectedComp, setSelectedComp] = useState<Component21st|null>(null)
+  const [blockCategory, setBlockCategory] = useState('All')
+  const [blockQuery, setBlockQuery] = useState('')
   const [imageSearch, setImageSearch] = useState('')
   const [, setImageLoading] = useState(false)
   const [images, setImages] = useState<{url:string;alt:string}[]>([])
@@ -183,28 +183,22 @@ function RightPanel({ B }: { B: typeof DARK }) {
     setAiLoading(false)
   }
 
-  const fetchComponents = async (q: string) => {
-    if (!q.trim()) return
-    setCompLoading(true)
-    try {
-      const res = await fetch(`/api/components?query=${encodeURIComponent(q)}`)
-      const data = await res.json()
-      const list: Component21st[] = Array.isArray(data) ? data : data.results || data.components || []
-      setComponents(list.slice(0,16))
-    } catch {}
-    setCompLoading(false)
+  const filteredBlocks = BLOCKS.filter(b => {
+    if (blockCategory !== 'All' && b.category !== blockCategory) return false
+    if (blockQuery && !`${b.name} ${b.description} ${b.category}`.toLowerCase().includes(blockQuery.toLowerCase())) return false
+    return true
+  })
+
+  const addBlock = (block: Block) => {
+    const newSec = { id: uuid(), type: block.type, data: { ...block.data } }
+    const page = getActivePage(store)
+    if (!page) return
+    const updatedSections = [...page.sections, newSec]
+    const updatedPages = store.site.pages.map(p => p.id === page.id ? { ...p, sections: updatedSections } : p)
+    useStore.setState({ site: { ...store.site, pages: updatedPages }, activeSectionId: newSec.id })
   }
 
-  const addComponent = (comp: Component21st) => {
-    if (!comp.demo_url && !comp.preview_url) return
-    const html = comp.demo_url
-      ? `<iframe src="${comp.demo_url}" style="width:100%;height:400px;border:none" title="${comp.name}"></iframe>`
-      : `<img src="${comp.preview_url}" alt="${comp.name}" style="width:100%;border-radius:8px">`
-    store.addCustomSection(html, comp.name || 'Component')
-    setSelectedComp(null)
-  }
-
-  const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['components','◈ Library']] as const
+  const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['components','◈ Blocks']] as const
 
   return (
     <div style={{ width:300, background:B.bg, borderLeft:`1px solid ${B.border}`, display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden' }}>
@@ -409,44 +403,38 @@ function RightPanel({ B }: { B: typeof DARK }) {
           </div>
         )}
 
-        {/* COMPONENTS TAB */}
+        {/* BLOCK LIBRARY TAB */}
         {tab==='components' && (
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            <div style={{ fontSize:13, fontWeight:800, marginBottom:4 }}>◈ Component Library</div>
-            <div style={{ fontSize:11, color:B.muted, lineHeight:1.6, marginBottom:4 }}>Browse and add premium components to any page.</div>
-            <div style={{ display:'flex', gap:6 }}>
-              <input value={compQuery} onChange={e=>setCompQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&fetchComponents(compQuery)}
-                placeholder="Search components..." style={{ ...inp, flex:1 }} />
-              <Btn color={B.blue} onClick={()=>fetchComponents(compQuery)}>Go</Btn>
-            </div>
+            <div style={{ fontSize:13, fontWeight:800 }}>◈ Block Library</div>
+            <div style={{ fontSize:11, color:B.muted, lineHeight:1.6 }}>Premium pre-built sections you can drop into any page. Each block has unique copy and styling — fully editable after.</div>
+            <input value={blockQuery} onChange={e=>setBlockQuery(e.target.value)}
+              placeholder="Search blocks..." style={inp} />
             <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-              {['hero section','pricing table','testimonials','navigation','footer','features grid','contact form'].map(q=>(
-                <button key={q} onClick={()=>{ setCompQuery(q); fetchComponents(q) }}
-                  style={{ padding:'4px 10px', borderRadius:999, background:B.card, border:`1px solid ${B.border}`, color:B.muted, fontSize:9, fontWeight:600, cursor:'pointer' }}>
-                  {q}
+              {BLOCK_CATEGORIES.map(cat => (
+                <button key={cat} onClick={()=>setBlockCategory(cat)}
+                  style={{ padding:'4px 10px', borderRadius:999, background:blockCategory===cat?B.green:B.card, color:blockCategory===cat?B.bg:B.muted, border:`1px solid ${blockCategory===cat?B.green:B.border}`, fontSize:10, fontWeight:700, cursor:'pointer' }}>
+                  {cat}
                 </button>
               ))}
             </div>
-            {compLoading && <div style={{ textAlign:'center', padding:20, color:B.muted, fontSize:12 }}>Loading...</div>}
-            {selectedComp && (
-              <div style={{ background:B.card, borderRadius:10, padding:12, border:`2px solid ${B.green}` }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                  <div style={{ fontSize:12, fontWeight:800 }}>{selectedComp.name}</div>
-                  <button onClick={()=>setSelectedComp(null)} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer' }}>✕</button>
-                </div>
-                {selectedComp.preview_url && <img src={selectedComp.preview_url} alt={selectedComp.name} style={{ width:'100%', borderRadius:8, marginBottom:8 }} />}
-                {selectedComp.description && <div style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.5 }}>{selectedComp.description}</div>}
-                <Btn color={B.green} full onClick={()=>addComponent(selectedComp)}>+ Add to Page</Btn>
-              </div>
-            )}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-              {components.map((c,i) => (
-                <motion.div key={c.id||i} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}
-                  onClick={()=>setSelectedComp(c)}
-                  style={{ background:B.card, borderRadius:10, padding:10, cursor:'pointer', border:`1px solid ${selectedComp?.id===c.id?B.green:B.border}` }}>
-                  {c.preview_url ? <img src={c.preview_url} alt={c.name} style={{ width:'100%', height:80, objectFit:'cover', borderRadius:7, marginBottom:6 }} />
-                    : <div style={{ width:'100%', height:80, borderRadius:7, marginBottom:6, background:B.surface, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>◈</div>}
-                  <div style={{ fontSize:10, fontWeight:700, color:B.text }}>{c.name||`Component ${i+1}`}</div>
+            <div style={{ fontSize:10, color:B.muted, marginTop:4 }}>{filteredBlocks.length} block{filteredBlocks.length!==1?'s':''}</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {filteredBlocks.map(block => (
+                <motion.div key={block.id} whileHover={{ scale:1.01 }} whileTap={{ scale:0.99 }}
+                  onClick={()=>addBlock(block)}
+                  style={{ background:B.card, borderRadius:10, padding:12, cursor:'pointer', border:`1px solid ${B.border}`, display:'flex', gap:10, alignItems:'flex-start', transition:'border-color 0.15s' }}
+                  onMouseEnter={e=>{ e.currentTarget.style.borderColor = B.green }}
+                  onMouseLeave={e=>{ e.currentTarget.style.borderColor = B.border }}>
+                  <div style={{ width:36, height:36, borderRadius:8, background:B.surface, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{block.emoji}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:6, marginBottom:3 }}>
+                      <div style={{ fontSize:12, fontWeight:700, color:B.text }}>{block.name}</div>
+                      <span style={{ fontSize:9, padding:'2px 6px', borderRadius:999, background:`${B.blue}20`, color:B.blue, fontWeight:700, flexShrink:0 }}>{block.category}</span>
+                    </div>
+                    <div style={{ fontSize:10, color:B.muted, lineHeight:1.5 }}>{block.description}</div>
+                    <div style={{ fontSize:9, color:B.green, fontWeight:700, marginTop:6 }}>+ Click to add</div>
+                  </div>
                 </motion.div>
               ))}
             </div>

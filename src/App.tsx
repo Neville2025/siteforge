@@ -548,9 +548,27 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify(payload),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Build failed')
-      store.loadSite(data.site)
+      if (!res.ok) {
+        const txt = await res.text()
+        let msg = 'Build failed'
+        try { msg = JSON.parse(txt).error } catch { msg = txt.slice(0,150) }
+        throw new Error(msg)
+      }
+      // Stream the JSON response
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No stream')
+      const dec = new TextDecoder()
+      let raw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += dec.decode(value, { stream: true })
+      }
+      raw = raw.trim().replace(/^```json\n?|```$/g, '').trim()
+      let site
+      try { site = JSON.parse(raw) }
+      catch { throw new Error('AI returned invalid JSON. Try again with simpler info.') }
+      store.loadSite(site)
       onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Build failed')

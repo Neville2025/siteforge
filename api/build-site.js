@@ -29,37 +29,33 @@ export default async function handler(req, res) {
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    res.setHeader('Content-Type', 'application/json')
-    res.setHeader('Cache-Control', 'no-cache')
+    // Stream so Vercel keeps connection alive
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.setHeader('Transfer-Encoding', 'chunked')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
 
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 16000,
       messages: [{
         role: 'user',
-        content: `You are a senior web designer building a complete multi-page website. Generate a JSON structure for a website based on the business information below.
+        content: `You are a senior web designer building a complete multi-page website. Generate a JSON structure for ${business.name} based on the business info below.
 
-═══════════════════════════════
-BUSINESS INFO
-═══════════════════════════════
-Name: ${business.name}
-Industry: ${business.industry}
-Description: ${business.description}
-Services offered: ${business.services}
-Phone: ${business.phone}
-Email: ${business.email}
-Address: ${business.address}
-Brand Colors: Primary ${business.primaryColor}, Secondary ${business.secondaryColor}
-Tone: ${business.tone}
+BUSINESS:
+- Name: ${business.name}
+- Industry: ${business.industry}
+- Description: ${business.description}
+- Services: ${business.services}
+- Phone: ${business.phone}
+- Email: ${business.email}
+- Address: ${business.address}
+- Brand Colors: Primary ${business.primaryColor}, Secondary ${business.secondaryColor}
+- Tone: ${business.tone}
 
-═══════════════════════════════
-TASK
-═══════════════════════════════
-Generate a JSON object representing a complete 4-page website with sections appropriate for ${business.industry}. Use REAL, COMPELLING copy specific to ${business.name} — no generic placeholders. Write testimonials, team bios, service descriptions, etc. that sound real and industry-appropriate.
+TASK: Generate a JSON object for a 4-page website. Use REAL, COMPELLING copy specific to ${business.name} — no generic placeholders. Write industry-specific testimonials, team bios, service descriptions, FAQs.
 
-═══════════════════════════════
-EXACT JSON STRUCTURE REQUIRED
-═══════════════════════════════
+EXACT JSON SCHEMA (return only this structure, no other text):
+
 {
   "name": "${business.name}",
   "tagline": "compelling 6-10 word tagline",
@@ -67,29 +63,29 @@ EXACT JSON STRUCTURE REQUIRED
   "theme": {
     "primaryColor": "${business.primaryColor}",
     "secondaryColor": "${business.secondaryColor}",
-    "accentColor": "complementary hex color",
-    "fontHeading": "one of: Inter | Poppins | Raleway | Montserrat | Playfair Display | DM Sans",
-    "fontBody": "one of: Inter | Poppins | Nunito | DM Sans | Open Sans",
-    "borderRadius": "one of: none | small | medium | large | pill",
+    "accentColor": "complementary hex",
+    "fontHeading": "Inter|Poppins|Raleway|Montserrat|Playfair Display|DM Sans",
+    "fontBody": "Inter|Poppins|Nunito|DM Sans|Open Sans",
+    "borderRadius": "small|medium|large",
     "style": "light or dark"
   },
   "pages": [
     {
       "name": "Home", "slug": "/",
       "sections": [
-        { "type": "hero", "data": { "headline": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "...", "image": "https://images.unsplash.com/...?w=1400&q=80", "showStats": true } },
+        { "type": "hero", "data": { "headline": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "...", "image": "https://images.unsplash.com/photo-INDUSTRY-RELEVANT?w=1400&q=80", "showStats": true } },
         { "type": "stats", "data": { "stat1val": "...", "stat1label": "...", "stat2val": "...", "stat2label": "...", "stat3val": "...", "stat3label": "...", "stat4val": "...", "stat4label": "..." } },
-        { "type": "services", "data": { "heading": "...", "subheading": "...", "items": [ { "icon": "⚡", "title": "...", "desc": "..." } ] } },
-        { "type": "features", "data": { "heading": "Why Choose Us", "subheading": "...", "items": [ { "icon": "✓", "title": "...", "desc": "..." } ] } },
-        { "type": "testimonials", "data": { "heading": "...", "items": [ { "name": "...", "role": "...", "quote": "...", "avatar": "https://ui-avatars.com/api/?name=Full+Name&background=random" } ] } },
+        { "type": "services", "data": { "heading": "...", "subheading": "...", "items": [ { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." } ] } },
+        { "type": "features", "data": { "heading": "Why Choose Us", "subheading": "...", "items": [ { "icon": "✓", "title": "...", "desc": "..." }, { "icon": "✓", "title": "...", "desc": "..." }, { "icon": "✓", "title": "...", "desc": "..." }, { "icon": "✓", "title": "...", "desc": "..." } ] } },
+        { "type": "testimonials", "data": { "heading": "...", "items": [ { "name": "Real Name", "role": "Title, Company", "quote": "Specific quote about ${business.industry}", "avatar": "https://ui-avatars.com/api/?name=First+Last&background=2563eb&color=fff" }, { "name": "Real Name", "role": "Title, Company", "quote": "Specific quote", "avatar": "https://ui-avatars.com/api/?name=First+Last&background=16a34a&color=fff" }, { "name": "Real Name", "role": "Title, Company", "quote": "Specific quote", "avatar": "https://ui-avatars.com/api/?name=First+Last&background=ea580c&color=fff" } ] } },
         { "type": "cta", "data": { "heading": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "" } }
       ]
     },
     {
       "name": "About", "slug": "/about",
       "sections": [
-        { "type": "about", "data": { "heading": "...", "subheading": "...", "body": "...", "body2": "...", "image": "https://images.unsplash.com/...?w=800&q=80", "ctaText": "..." } },
-        { "type": "team", "data": { "heading": "Meet the Team", "members": [ { "name": "...", "role": "...", "bio": "...", "image": "https://ui-avatars.com/api/?name=Name&size=200&background=random" } ] } },
+        { "type": "about", "data": { "heading": "...", "subheading": "...", "body": "compelling story 2-3 sentences", "body2": "what makes us different 2 sentences", "image": "https://images.unsplash.com/photo-INDUSTRY-RELEVANT?w=800&q=80", "ctaText": "..." } },
+        { "type": "team", "data": { "heading": "Meet the Team", "members": [ { "name": "Real Name", "role": "Position", "bio": "...", "image": "https://ui-avatars.com/api/?name=First+Last&size=200&background=2563eb&color=fff" }, { "name": "Real Name", "role": "Position", "bio": "...", "image": "https://ui-avatars.com/api/?name=First+Last&size=200&background=16a34a&color=fff" }, { "name": "Real Name", "role": "Position", "bio": "...", "image": "https://ui-avatars.com/api/?name=First+Last&size=200&background=ea580c&color=fff" } ] } },
         { "type": "stats", "data": { "stat1val": "...", "stat1label": "...", "stat2val": "...", "stat2label": "...", "stat3val": "...", "stat3label": "...", "stat4val": "...", "stat4label": "..." } }
       ]
     },
@@ -97,9 +93,9 @@ EXACT JSON STRUCTURE REQUIRED
       "name": "Services", "slug": "/services",
       "sections": [
         { "type": "hero", "data": { "headline": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "", "image": "", "showStats": false } },
-        { "type": "services", "data": { "heading": "...", "subheading": "...", "items": [ {} ] } },
-        { "type": "pricing", "data": { "heading": "...", "subheading": "...", "items": [ { "name": "...", "price": "...", "period": "...", "features": ["..."], "cta": "...", "highlighted": false } ] } },
-        { "type": "faq", "data": { "heading": "Common Questions", "items": [ { "q": "...", "a": "..." } ] } },
+        { "type": "services", "data": { "heading": "...", "subheading": "...", "items": [ { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." } ] } },
+        { "type": "pricing", "data": { "heading": "...", "subheading": "...", "items": [ { "name": "...", "price": "R...", "period": "...", "features": ["...", "...", "...", "..."], "cta": "...", "highlighted": false }, { "name": "...", "price": "R...", "period": "...", "features": ["...", "...", "...", "...", "..."], "cta": "...", "highlighted": true }, { "name": "...", "price": "Custom", "period": "", "features": ["...", "...", "...", "..."], "cta": "Contact Us", "highlighted": false } ] } },
+        { "type": "faq", "data": { "heading": "Common Questions", "items": [ { "q": "Industry-specific question?", "a": "..." }, { "q": "...", "a": "..." }, { "q": "...", "a": "..." }, { "q": "...", "a": "..." } ] } },
         { "type": "cta", "data": { "heading": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "" } }
       ]
     },
@@ -112,38 +108,18 @@ EXACT JSON STRUCTURE REQUIRED
   ]
 }
 
-═══════════════════════════════
-CRITICAL RULES
-═══════════════════════════════
-1. Services array MUST have 3 items, each with industry-appropriate icon, title, and benefit-focused description
-2. Features items MUST have 4 entries with ✓ icon
-3. Testimonials MUST have 3 entries with realistic full names appropriate for South African context, real-sounding company roles, and specific industry-relevant quotes (NOT generic "great service")
-4. Team members MUST have 3 entries with diverse names and specific roles
-5. FAQ MUST have 4-5 industry-specific questions
-6. Pricing MUST have 3 tiers, middle tier "highlighted: true"
-7. Stats MUST be impressive but believable for ${business.industry} (e.g., "200+ clients", "98% satisfaction", "10yr experience", "24/7 support")
-8. Use Unsplash images: https://images.unsplash.com/photo-... — pick relevant photos for ${business.industry}
-9. Use ui-avatars.com for testimonial avatars and team photos
-10. Tone should match "${business.tone}" — professional/bold/playful/minimal/luxury/corporate
-
-Return ONLY the JSON object — no markdown, no code blocks, no explanation. Start with { and end with }`
+CRITICAL: Return ONLY the JSON object — start with { and end with }. No markdown blocks, no commentary. The JSON must be valid and parseable.`
       }]
     })
 
-    let raw = ''
     for await (const chunk of stream) {
       if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        raw += chunk.delta.text
+        res.write(chunk.delta.text)
       }
     }
-
-    raw = raw.trim().replace(/^```json\n?|```$/g, '').trim()
-    let result
-    try { result = JSON.parse(raw) }
-    catch { return res.status(500).json({ error: 'AI returned invalid JSON. Try again.' }) }
-
-    res.json({ site: result })
+    res.end()
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: err.message })
+    else res.end()
   }
 }

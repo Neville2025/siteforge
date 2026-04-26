@@ -55,6 +55,8 @@ interface BuilderState {
   deleteSection: (id: string) => void
   moveSectionUp: (id: string) => void
   moveSectionDown: (id: string) => void
+  moveSectionToTop: (id: string) => void
+  moveSectionToBottom: (id: string) => void
   updateSectionData: (id: string, key: string, value: any) => void
   setSectionData: (id: string, data: Record<string, any>) => void
   addCustomSection: (html: string, name: string) => void
@@ -149,6 +151,32 @@ export const useStore = create<BuilderState>()(
         return { site: { ...s.site, pages } }
       }),
 
+      moveSectionToTop: (id) => set(s => {
+        const pages = s.site.pages.map(p => {
+          if (p.id !== s.activePageId) return p
+          const idx = p.sections.findIndex(sec => sec.id === id)
+          if (idx <= 0) return p
+          const sections = [...p.sections]
+          const [moved] = sections.splice(idx, 1)
+          sections.unshift(moved)
+          return { ...p, sections }
+        })
+        return { site: { ...s.site, pages } }
+      }),
+
+      moveSectionToBottom: (id) => set(s => {
+        const pages = s.site.pages.map(p => {
+          if (p.id !== s.activePageId) return p
+          const idx = p.sections.findIndex(sec => sec.id === id)
+          if (idx === -1 || idx >= p.sections.length-1) return p
+          const sections = [...p.sections]
+          const [moved] = sections.splice(idx, 1)
+          sections.push(moved)
+          return { ...p, sections }
+        })
+        return { site: { ...s.site, pages } }
+      }),
+
       updateSectionData: (id, key, value) => set(s => {
         const pages = s.site.pages.map(p =>
           p.id === s.activePageId ? {
@@ -176,7 +204,22 @@ export const useStore = create<BuilderState>()(
       setShowAddSection: (v) => set({ showAddSection: v, activeSectionId: null }),
       setAiLoading: (v) => set({ aiLoading: v }),
 
-      loadSite: (site) => set({ site, activePageId: site.pages[0]?.id || '' }),
+      loadSite: (site) => {
+        // Ensure all pages and sections have IDs (AI-generated data won't)
+        const fixed: SiteData = {
+          ...site,
+          id: site.id || uuid(),
+          pages: site.pages.map(p => ({
+            ...p,
+            id: p.id || uuid(),
+            sections: p.sections.map(sec => ({
+              ...sec,
+              id: sec.id || uuid(),
+            }))
+          }))
+        }
+        set({ site: fixed, activePageId: fixed.pages[0]?.id || '', activeSectionId: null })
+      },
     }),
     { name: 'siteforge-v1' }
   )

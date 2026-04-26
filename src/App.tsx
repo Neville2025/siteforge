@@ -137,10 +137,12 @@ function LeftPanel({ B }: { B: typeof DARK }) {
               <span style={{ fontSize:12, fontWeight:600, color:active?B.green:B.text }}>
                 {def?.icon||'◆'} {def?.name||sec.type}
               </span>
-              <div style={{ display:'flex', gap:2 }}>
-                <button onClick={e=>{e.stopPropagation();store.moveSectionUp(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:11 }} title="Move up">↑</button>
-                <button onClick={e=>{e.stopPropagation();store.moveSectionDown(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:11 }} title="Move down">↓</button>
-                <button onClick={e=>{e.stopPropagation();store.deleteSection(sec.id)}} style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', fontSize:11 }} title="Delete">✕</button>
+              <div style={{ display:'flex', gap:1 }}>
+                <button onClick={e=>{e.stopPropagation();store.moveSectionToTop(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:10, padding:'2px 3px' }} title="Move to top">⤒</button>
+                <button onClick={e=>{e.stopPropagation();store.moveSectionUp(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:11, padding:'2px 3px' }} title="Move up">↑</button>
+                <button onClick={e=>{e.stopPropagation();store.moveSectionDown(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:11, padding:'2px 3px' }} title="Move down">↓</button>
+                <button onClick={e=>{e.stopPropagation();store.moveSectionToBottom(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:10, padding:'2px 3px' }} title="Move to bottom">⤓</button>
+                <button onClick={e=>{e.stopPropagation();store.deleteSection(sec.id)}} style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', fontSize:11, padding:'2px 3px' }} title="Delete">✕</button>
               </div>
             </div>
           )
@@ -218,6 +220,8 @@ function RightPanel({ B }: { B: typeof DARK }) {
     const updatedSections = [...page.sections, newSec]
     const updatedPages = store.site.pages.map(p => p.id === page.id ? { ...p, sections: updatedSections } : p)
     useStore.setState({ site: { ...store.site, pages: updatedPages }, activeSectionId: newSec.id })
+    // Switch to edit tab so they can immediately customize
+    setTab('edit')
   }
 
   const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['components','◈ Blocks']] as const
@@ -505,12 +509,183 @@ function AddSectionModal({ B }: { B: typeof DARK }) {
   )
 }
 
+// ── Magic Build Modal ─────────────────────────────────────────
+function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }) {
+  const store = useStore()
+  const [mode, setMode] = useState<'url'|'manual'>('manual')
+  const [url, setUrl] = useState('')
+  const [name, setName] = useState('')
+  const [industry, setIndustry] = useState('')
+  const [description, setDescription] = useState('')
+  const [services, setServices] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [primaryColor, setPrimaryColor] = useState('#2563eb')
+  const [tone, setTone] = useState('professional')
+  const [building, setBuilding] = useState(false)
+  const [step, setStep] = useState('')
+  const [error, setError] = useState('')
+
+  const inp: React.CSSProperties = { width:'100%', padding:'10px 14px', background:B.card, border:`1px solid ${B.border}`, borderRadius:8, color:B.text, fontSize:13, outline:'none', boxSizing:'border-box' }
+
+  const build = async () => {
+    setBuilding(true); setError('')
+    try {
+      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone }
+      if (mode === 'url' && url.trim()) {
+        setStep('Analyzing existing website...')
+        const r = await fetch('/api/analyze', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ url: url.trim() })
+        })
+        const audit = await r.json()
+        if (!r.ok) throw new Error(audit.error || 'Analysis failed')
+        payload = { audit }
+      }
+      setStep('AI is designing your full website... (~30 seconds)')
+      const res = await fetch('/api/build-site', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Build failed')
+      store.loadSite(data.site)
+      onClose()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Build failed')
+    } finally {
+      setBuilding(false); setStep('')
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      onClick={onClose}>
+      <motion.div initial={{ scale:.95 }} animate={{ scale:1 }}
+        onClick={e=>e.stopPropagation()}
+        style={{ background:B.surface, borderRadius:16, padding:28, width:560, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', border:`1px solid ${B.border}` }}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+          <div>
+            <div style={{ fontSize:20, fontWeight:900, marginBottom:4 }}>✨ Magic Build</div>
+            <div style={{ fontSize:12, color:B.muted }}>AI generates your complete multi-page website in one click</div>
+          </div>
+          <button onClick={onClose} disabled={building} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:24 }}>✕</button>
+        </div>
+
+        {!building && <>
+          <div style={{ display:'flex', gap:6, marginBottom:18 }}>
+            <button onClick={()=>setMode('manual')} style={{ flex:1, padding:'10px', borderRadius:9, border:`1px solid ${mode==='manual'?B.green:B.border}`, background:mode==='manual'?`${B.green}15`:B.card, color:mode==='manual'?B.green:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              📝 Enter business info
+            </button>
+            <button onClick={()=>setMode('url')} style={{ flex:1, padding:'10px', borderRadius:9, border:`1px solid ${mode==='url'?B.green:B.border}`, background:mode==='url'?`${B.green}15`:B.card, color:mode==='url'?B.green:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              🔗 Use existing website URL
+            </button>
+          </div>
+
+          {mode === 'url' ? (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Existing Website URL</div>
+              <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://yourbusiness.co.za" style={inp} />
+              <div style={{ fontSize:11, color:B.muted, marginTop:8, lineHeight:1.6 }}>AI will analyze the site, extract brand colors, services, contact info — then generate a complete new multi-page website.</div>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Business Name *</div>
+                  <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Apex Plumbing" style={inp} />
+                </div>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Industry *</div>
+                  <input value={industry} onChange={e=>setIndustry(e.target.value)} placeholder="e.g. Plumbing & Maintenance" style={inp} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>What do you do? *</div>
+                <textarea value={description} onChange={e=>setDescription(e.target.value)} rows={3}
+                  placeholder="Describe your business in 1-2 sentences. What do you offer and what makes you different?"
+                  style={{ ...inp, resize:'none' }} />
+              </div>
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Main Services (comma-separated)</div>
+                <input value={services} onChange={e=>setServices(e.target.value)}
+                  placeholder="e.g. Pipe repair, drainage, geyser installation" style={inp} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Phone</div>
+                  <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+27 11 000 0000" style={inp} />
+                </div>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Email</div>
+                  <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="hello@business.co.za" style={inp} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Address / Location</div>
+                <input value={address} onChange={e=>setAddress(e.target.value)} placeholder="e.g. Sandton, Johannesburg" style={inp} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Brand Color</div>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)}
+                      style={{ width:42, height:38, border:'none', background:'none', cursor:'pointer', borderRadius:8, padding:2 }} />
+                    <input value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)} style={{ ...inp, fontFamily:'monospace', flex:1 }} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', marginBottom:5 }}>Brand Tone</div>
+                  <select value={tone} onChange={e=>setTone(e.target.value)} style={inp}>
+                    <option value="professional">Professional</option>
+                    <option value="bold">Bold & Confident</option>
+                    <option value="playful">Playful & Friendly</option>
+                    <option value="minimal">Minimal & Clean</option>
+                    <option value="luxury">Luxury & Premium</option>
+                    <option value="corporate">Corporate & Trusted</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && <div style={{ background:'#ef444420', border:'1px solid #ef4444', borderRadius:8, padding:12, fontSize:12, color:'#ef4444', marginTop:14 }}>{error}</div>}
+
+          <button onClick={build}
+            disabled={mode === 'url' ? !url.trim() : (!name.trim() || !industry.trim() || !description.trim())}
+            style={{ width:'100%', marginTop:20, padding:'14px', borderRadius:10, background:B.green, color:B.bg, fontSize:14, fontWeight:900, border:'none', cursor:'pointer', letterSpacing:'-0.3px' }}>
+            ✨ Build My Website
+          </button>
+          <div style={{ fontSize:11, color:B.muted, marginTop:10, textAlign:'center', lineHeight:1.6 }}>
+            AI will create 4 pages with all sections, copy, testimonials, FAQs and more — fully editable after.
+          </div>
+        </>}
+
+        {building && (
+          <div style={{ padding:'40px 0', textAlign:'center' }}>
+            <motion.div animate={{ rotate:360 }} transition={{ repeat:Infinity, duration:1.5, ease:'linear' }}
+              style={{ width:48, height:48, borderRadius:'50%', border:`3px solid ${B.border}`, borderTopColor:B.green, margin:'0 auto 20px' }} />
+            <div style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>{step}</div>
+            <div style={{ fontSize:11, color:B.muted, lineHeight:1.7, maxWidth:400, margin:'0 auto' }}>
+              Generating: pages, hero copy, services, features, testimonials, team, pricing, FAQs, contact — all unique to your business.
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ── Main App ──────────────────────────────────────────────────
 export default function App() {
   const [darkMode, setDarkMode] = useState(true)
   const B = darkMode ? DARK : LIGHT
   const store = useStore()
   const [exporting, setExporting] = useState(false)
+  const [showMagic, setShowMagic] = useState(false)
 
   const downloadSite = async () => {
     setExporting(true)
@@ -549,6 +724,10 @@ export default function App() {
         <div style={{ fontSize:12, color:B.muted }}>
           Editing: <strong style={{ color:B.text }}>{store.site.name}</strong>
         </div>
+        <button onClick={()=>setShowMagic(true)}
+          style={{ padding:'0 14px', height:34, borderRadius:8, background:`linear-gradient(135deg, ${B.green}, ${B.blue})`, color:'#fff', fontSize:12, fontWeight:800, border:'none', cursor:'pointer' }}>
+          ✨ Magic Build
+        </button>
         <button onClick={()=>setDarkMode(d=>!d)}
           style={{ width:34, height:34, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           {darkMode?'☀️':'🌙'}
@@ -573,6 +752,11 @@ export default function App() {
       {/* ADD SECTION MODAL */}
       <AnimatePresence>
         {store.showAddSection && <AddSectionModal B={B} />}
+      </AnimatePresence>
+
+      {/* MAGIC BUILD MODAL */}
+      <AnimatePresence>
+        {showMagic && <MagicBuildModal B={B} onClose={()=>setShowMagic(false)} />}
       </AnimatePresence>
     </div>
   )

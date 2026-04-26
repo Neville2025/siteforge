@@ -565,18 +565,53 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         raw += dec.decode(value, { stream: true })
       }
       raw = raw.trim().replace(/^```json\n?|```$/g, '').trim()
-      let site
-      try {
-        site = JSON.parse(raw)
-      } catch (e) {
-        // Try to recover: cut off at last complete object boundary
-        const lastValidEnd = raw.lastIndexOf('}]}]}')
-        if (lastValidEnd > 0) {
-          try { site = JSON.parse(raw.slice(0, lastValidEnd + 5)) } catch {}
-        }
-        if (!site) throw new Error(`AI response was truncated. Try again — usually works on second attempt.`)
+      let content
+      try { content = JSON.parse(raw) }
+      catch { throw new Error('AI response was incomplete. Please try again.') }
+
+      // Build the full SiteData from the flat AI response
+      const businessName = mode === 'url' ? (content.name || name || 'Your Business') : name
+      const avatarColors = ['2563eb','16a34a','ea580c','dc2626','9333ea']
+      const avatar = (n: string, i: number) => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&size=200&background=${avatarColors[i%5]}&color=fff`
+
+      const site = {
+        id: 'gen', name: businessName, tagline: content.tagline || '', logo: '',
+        theme: {
+          primaryColor: primaryColor || '#2563eb',
+          secondaryColor: content.accentColor || '#7c3aed',
+          accentColor: content.accentColor || '#06b6d4',
+          fontHeading: content.fontHeading || 'Inter',
+          fontBody: content.fontBody || 'Inter',
+          borderRadius: content.borderRadius || 'medium',
+          style: content.style || 'light',
+        },
+        pages: [
+          { name:'Home', slug:'/', sections: [
+            { type:'hero', data: { headline: content.heroHeadline, subtext: content.heroSubtext, ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'Learn More', image: content.heroImage, showStats: true } },
+            { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
+            { type:'services', data: { heading:'What We Offer', subheading:'Professional services tailored to your needs.', items: content.services||[] } },
+            { type:'features', data: { heading:'Why Choose Us', subheading:'What makes us different.', items: (content.features||[]).map((f:any)=>({ icon:'✓', title:f.title, desc:f.desc })) } },
+            { type:'testimonials', data: { heading:'What Clients Say', items: (content.testimonials||[]).map((t:any,i:number)=>({ ...t, avatar: avatar(t.name, i) })) } },
+            { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Take the next step today. We are here to help.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
+          ]},
+          { name:'About', slug:'/about', sections: [
+            { type:'about', data: { heading: content.aboutHeading||'About Us', subheading: content.aboutSubheading||'Our Story', body: content.aboutBody||'', body2: content.aboutBody2||'', image: content.aboutImage, ctaText:'Get in Touch' } },
+            { type:'team', data: { heading:'Meet the Team', members: (content.team||[]).map((m:any,i:number)=>({ ...m, image: avatar(m.name, i) })) } },
+            { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
+          ]},
+          { name:'Services', slug:'/services', sections: [
+            { type:'hero', data: { headline:`Our ${(industry||'Professional Services')}`, subtext:'Discover the full range of services we offer.', ctaText:'Get a Quote', ctaUrl:'#contact', ctaText2:'', image:'', showStats: false } },
+            { type:'services', data: { heading:'Services We Offer', subheading:'Comprehensive solutions for your business.', items: content.services||[] } },
+            { type:'pricing', data: { heading:'Pricing Packages', subheading:'Transparent pricing. No hidden fees.', items: content.pricing||[] } },
+            { type:'faq', data: { heading:'Frequently Asked Questions', items: content.faq||[] } },
+            { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Contact us today for a free consultation.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
+          ]},
+          { name:'Contact', slug:'/contact', sections: [
+            { type:'contact', data: { heading:'Get in Touch', subtext:'We would love to hear from you. Send us a message.', phone: phone, email: email, address: address, hours:'Monday – Friday, 8:00am – 5:00pm SAST' } },
+          ]},
+        ]
       }
-      store.loadSite(site)
+      store.loadSite(site as any)
       onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Build failed')

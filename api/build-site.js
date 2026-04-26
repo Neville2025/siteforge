@@ -29,92 +29,97 @@ export default async function handler(req, res) {
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    // Stream so Vercel keeps connection alive
     res.setHeader('Content-Type', 'text/plain; charset=utf-8')
     res.setHeader('Transfer-Encoding', 'chunked')
-    res.setHeader('X-Content-Type-Options', 'nosniff')
 
+    // Use Claude's structured output via tool use - guarantees valid JSON
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 32000,
+      max_tokens: 16000,
+      tools: [{
+        name: 'build_website',
+        description: 'Generate a complete multi-page website',
+        input_schema: {
+          type: 'object',
+          properties: {
+            tagline: { type: 'string', description: '6-10 word powerful tagline' },
+            accentColor: { type: 'string', description: 'Hex color complementing primary' },
+            fontHeading: { type: 'string', enum: ['Inter','Poppins','Raleway','Montserrat','Playfair Display','DM Sans'] },
+            fontBody: { type: 'string', enum: ['Inter','Poppins','Nunito','DM Sans','Open Sans'] },
+            borderRadius: { type: 'string', enum: ['none','small','medium','large','pill'] },
+            style: { type: 'string', enum: ['light','dark'] },
+            heroHeadline: { type: 'string' },
+            heroSubtext: { type: 'string' },
+            heroImage: { type: 'string', description: 'Unsplash photo URL relevant to industry' },
+            ctaText: { type: 'string', description: 'Main button text' },
+            stats: {
+              type: 'array', minItems: 4, maxItems: 4,
+              items: { type: 'object', properties: { val: { type:'string' }, label: { type:'string' } }, required:['val','label'] }
+            },
+            services: {
+              type: 'array', minItems: 3, maxItems: 3,
+              items: { type: 'object', properties: { icon: { type:'string' }, title: { type:'string' }, desc: { type:'string' } }, required:['icon','title','desc'] }
+            },
+            features: {
+              type: 'array', minItems: 4, maxItems: 4,
+              items: { type: 'object', properties: { title: { type:'string' }, desc: { type:'string' } }, required:['title','desc'] }
+            },
+            aboutHeading: { type: 'string' },
+            aboutSubheading: { type: 'string' },
+            aboutBody: { type: 'string', description: '2-3 sentences about the business' },
+            aboutBody2: { type: 'string', description: '2 sentences about what makes them different' },
+            aboutImage: { type: 'string', description: 'Unsplash photo URL' },
+            testimonials: {
+              type: 'array', minItems: 3, maxItems: 3,
+              items: { type:'object', properties:{ name:{type:'string'}, role:{type:'string'}, quote:{type:'string'}}, required:['name','role','quote'] }
+            },
+            team: {
+              type: 'array', minItems: 3, maxItems: 3,
+              items: { type:'object', properties:{ name:{type:'string'}, role:{type:'string'}, bio:{type:'string'}}, required:['name','role','bio'] }
+            },
+            pricing: {
+              type: 'array', minItems: 3, maxItems: 3,
+              items: { type:'object', properties:{ name:{type:'string'}, price:{type:'string'}, period:{type:'string'}, features:{type:'array',items:{type:'string'}}, cta:{type:'string'}, highlighted:{type:'boolean'}}, required:['name','price','features','cta','highlighted'] }
+            },
+            faq: {
+              type: 'array', minItems: 4, maxItems: 5,
+              items: { type:'object', properties:{ q:{type:'string'}, a:{type:'string'}}, required:['q','a'] }
+            },
+          },
+          required: ['tagline','accentColor','fontHeading','fontBody','borderRadius','style','heroHeadline','heroSubtext','heroImage','ctaText','stats','services','features','aboutHeading','aboutBody','aboutImage','testimonials','team','pricing','faq']
+        }
+      }],
+      tool_choice: { type: 'tool', name: 'build_website' },
       messages: [{
         role: 'user',
-        content: `You are a senior web designer building a complete multi-page website. Generate a JSON structure for ${business.name} based on the business info below.
+        content: `Generate website content for "${business.name}" - a ${business.industry} business.
 
-BUSINESS:
-- Name: ${business.name}
-- Industry: ${business.industry}
-- Description: ${business.description}
-- Services: ${business.services}
-- Phone: ${business.phone}
-- Email: ${business.email}
-- Address: ${business.address}
-- Brand Colors: Primary ${business.primaryColor}, Secondary ${business.secondaryColor}
-- Tone: ${business.tone}
+Description: ${business.description}
+Services they offer: ${business.services}
+Contact: phone ${business.phone}, email ${business.email}, located ${business.address}
+Brand: ${business.tone} tone, primary color ${business.primaryColor}
 
-TASK: Generate a JSON object for a 4-page website. Use REAL, COMPELLING copy specific to ${business.name} — no generic placeholders. Write industry-specific testimonials, team bios, service descriptions, FAQs.
+Write COMPELLING, INDUSTRY-SPECIFIC content. NOT generic placeholders. Every line should be specific to ${business.name} and ${business.industry}.
 
-EXACT JSON SCHEMA (return only this structure, no other text):
+For testimonials: realistic South African names, real-sounding company titles, specific quotes about ${business.industry}.
+For team: realistic names, appropriate roles, brief bios.
+For services: industry-specific icons (emojis), specific titles and descriptions.
+For pricing: appropriate prices in ZAR.
+For images: real Unsplash URLs relevant to ${business.industry} (e.g. https://images.unsplash.com/photo-XXX?w=1400&q=80).
+For stats: impressive but realistic for ${business.industry}.
 
-{
-  "name": "${business.name}",
-  "tagline": "compelling 6-10 word tagline",
-  "logo": "",
-  "theme": {
-    "primaryColor": "${business.primaryColor}",
-    "secondaryColor": "${business.secondaryColor}",
-    "accentColor": "complementary hex",
-    "fontHeading": "Inter|Poppins|Raleway|Montserrat|Playfair Display|DM Sans",
-    "fontBody": "Inter|Poppins|Nunito|DM Sans|Open Sans",
-    "borderRadius": "small|medium|large",
-    "style": "light or dark"
-  },
-  "pages": [
-    {
-      "name": "Home", "slug": "/",
-      "sections": [
-        { "type": "hero", "data": { "headline": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "...", "image": "https://images.unsplash.com/photo-INDUSTRY-RELEVANT?w=1400&q=80", "showStats": true } },
-        { "type": "stats", "data": { "stat1val": "...", "stat1label": "...", "stat2val": "...", "stat2label": "...", "stat3val": "...", "stat3label": "...", "stat4val": "...", "stat4label": "..." } },
-        { "type": "services", "data": { "heading": "...", "subheading": "...", "items": [ { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." } ] } },
-        { "type": "features", "data": { "heading": "Why Choose Us", "subheading": "...", "items": [ { "icon": "✓", "title": "...", "desc": "..." }, { "icon": "✓", "title": "...", "desc": "..." }, { "icon": "✓", "title": "...", "desc": "..." }, { "icon": "✓", "title": "...", "desc": "..." } ] } },
-        { "type": "testimonials", "data": { "heading": "...", "items": [ { "name": "Real Name", "role": "Title, Company", "quote": "Specific quote about ${business.industry}", "avatar": "https://ui-avatars.com/api/?name=First+Last&background=2563eb&color=fff" }, { "name": "Real Name", "role": "Title, Company", "quote": "Specific quote", "avatar": "https://ui-avatars.com/api/?name=First+Last&background=16a34a&color=fff" }, { "name": "Real Name", "role": "Title, Company", "quote": "Specific quote", "avatar": "https://ui-avatars.com/api/?name=First+Last&background=ea580c&color=fff" } ] } },
-        { "type": "cta", "data": { "heading": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "" } }
-      ]
-    },
-    {
-      "name": "About", "slug": "/about",
-      "sections": [
-        { "type": "about", "data": { "heading": "...", "subheading": "...", "body": "compelling story 2-3 sentences", "body2": "what makes us different 2 sentences", "image": "https://images.unsplash.com/photo-INDUSTRY-RELEVANT?w=800&q=80", "ctaText": "..." } },
-        { "type": "team", "data": { "heading": "Meet the Team", "members": [ { "name": "Real Name", "role": "Position", "bio": "...", "image": "https://ui-avatars.com/api/?name=First+Last&size=200&background=2563eb&color=fff" }, { "name": "Real Name", "role": "Position", "bio": "...", "image": "https://ui-avatars.com/api/?name=First+Last&size=200&background=16a34a&color=fff" }, { "name": "Real Name", "role": "Position", "bio": "...", "image": "https://ui-avatars.com/api/?name=First+Last&size=200&background=ea580c&color=fff" } ] } },
-        { "type": "stats", "data": { "stat1val": "...", "stat1label": "...", "stat2val": "...", "stat2label": "...", "stat3val": "...", "stat3label": "...", "stat4val": "...", "stat4label": "..." } }
-      ]
-    },
-    {
-      "name": "Services", "slug": "/services",
-      "sections": [
-        { "type": "hero", "data": { "headline": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "", "image": "", "showStats": false } },
-        { "type": "services", "data": { "heading": "...", "subheading": "...", "items": [ { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." }, { "icon": "emoji", "title": "...", "desc": "..." } ] } },
-        { "type": "pricing", "data": { "heading": "...", "subheading": "...", "items": [ { "name": "...", "price": "R...", "period": "...", "features": ["...", "...", "...", "..."], "cta": "...", "highlighted": false }, { "name": "...", "price": "R...", "period": "...", "features": ["...", "...", "...", "...", "..."], "cta": "...", "highlighted": true }, { "name": "...", "price": "Custom", "period": "", "features": ["...", "...", "...", "..."], "cta": "Contact Us", "highlighted": false } ] } },
-        { "type": "faq", "data": { "heading": "Common Questions", "items": [ { "q": "Industry-specific question?", "a": "..." }, { "q": "...", "a": "..." }, { "q": "...", "a": "..." }, { "q": "...", "a": "..." } ] } },
-        { "type": "cta", "data": { "heading": "...", "subtext": "...", "ctaText": "...", "ctaUrl": "#contact", "ctaText2": "" } }
-      ]
-    },
-    {
-      "name": "Contact", "slug": "/contact",
-      "sections": [
-        { "type": "contact", "data": { "heading": "Get in Touch", "subtext": "...", "phone": "${business.phone}", "email": "${business.email}", "address": "${business.address}", "hours": "..." } }
-      ]
-    }
-  ]
-}
-
-CRITICAL: Return ONLY the JSON object — start with { and end with }. No markdown blocks, no commentary. The JSON must be valid and parseable.`
+Use the build_website tool to return your response.`
       }]
     })
 
+    let toolInput = ''
     for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        res.write(chunk.delta.text)
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'input_json_delta') {
+        const text = chunk.delta.partial_json
+        if (text) {
+          toolInput += text
+          res.write(text)
+        }
       }
     }
     res.end()

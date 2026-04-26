@@ -14,7 +14,7 @@ const LIGHT = {
   orange:  '#ea6300', text:    '#0f172a', muted: '#64748b', dimmed: '#94a3b8',
 }
 
-const BACKEND = 'http://localhost:3333'
+const BACKEND = ''
 
 interface Service { title: string; description: string; icon: string }
 interface Analysis {

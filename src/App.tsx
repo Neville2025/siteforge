@@ -55,7 +55,7 @@ export default function App() {
       const auditData: Analysis = await auditRes.json()
       setAudit(auditData)
 
-      // Step 2: Generate
+      // Step 2: Generate (streaming)
       setStep('generating')
       setStepMsg('Designing your website...')
       const genRes = await fetch('/api/generate', {
@@ -63,11 +63,26 @@ export default function App() {
         body: JSON.stringify({ audit: auditData }),
       })
       if (!genRes.ok) {
-        const e = await genRes.json()
-        throw new Error(e.error || 'Generation failed')
+        let errMsg = 'Generation failed'
+        try { const e = await genRes.json(); errMsg = e.error || errMsg } catch {}
+        throw new Error(errMsg)
       }
-      const { html: generatedHtml } = await genRes.json()
-      setHtml(generatedHtml)
+
+      // Stream the HTML as it arrives
+      const reader = genRes.body?.getReader()
+      if (!reader) throw new Error('No response stream')
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+        if (accumulated.includes('<')) setHtml(accumulated)
+      }
+      if (!accumulated.startsWith('<!DOCTYPE') && !accumulated.startsWith('<html')) {
+        throw new Error('Website generation failed. Please try again.')
+      }
+      setHtml(accumulated)
       setStep('done')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -83,8 +98,17 @@ export default function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audit }),
       })
-      const { html: newHtml } = await genRes.json()
-      setHtml(newHtml)
+      const reader = genRes.body?.getReader()
+      if (!reader) return
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+        if (accumulated.includes('<')) setHtml(accumulated)
+      }
+      setHtml(accumulated)
     } catch { /* silent */ }
     setRegenerating(false)
   }
@@ -300,8 +324,8 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* DONE — iframe preview */}
-            {step==='done' && html && (
+            {/* DONE — iframe preview (also shows during streaming) */}
+            {(step==='done' || (step==='generating' && html)) && html && (
               <motion.div key="preview" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
                 {/* Browser chrome */}
                 <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', background:B.card, borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>

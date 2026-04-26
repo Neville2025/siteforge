@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './index.css'
+import { TEMPLATES } from './templates'
+import type { ClientConfig, Service } from './types'
 
 // ── Theme definitions ──────────────────────────────────────────
 const DARK = {
@@ -16,7 +18,6 @@ const LIGHT = {
 
 const BACKEND = ''
 
-interface Service { title: string; description: string; icon: string }
 interface Analysis {
   name: string; tagline: string; description: string; industry: string
   tone: string; aesthetic: string; targetAudience: string; brandPersonality: string
@@ -31,11 +32,6 @@ interface Analysis {
   seoTitle: string; ctaText: string
 }
 interface Component { id?: string; name?: string; preview_url?: string; demo_url?: string; description?: string; component_slug?: string }
-interface ClientConfig {
-  name: string; tagline: string; description: string; phone: string
-  email: string; address: string; primaryColor: string; accentColor: string
-  industry: string; ctaText: string; services: Service[]
-}
 
 const defaults: ClientConfig = {
   name: 'Your Business', tagline: 'The Headline That Wins Clients',
@@ -76,83 +72,12 @@ function Field({ label, children, muted }: { label: string; children: React.Reac
 }
 
 // ── Website Preview ────────────────────────────────────────────
-function SitePreview({ c }: { c: ClientConfig }) {
-  return (
-    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", background: '#fff', color: '#0f172a', fontSize: 13 }}>
-      {/* Nav */}
-      <nav style={{ padding: '14px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 7, background: c.primaryColor }} />
-          <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.3px' }}>{c.name}</span>
-        </div>
-        <div style={{ display: 'flex', gap: 18, fontSize: 11, color: '#64748b' }}>
-          <span>Services</span><span>About</span><span>Work</span><span>Contact</span>
-        </div>
-        <div style={{ padding: '7px 16px', borderRadius: 7, background: c.primaryColor, color: '#fff', fontSize: 11, fontWeight: 700 }}>{c.ctaText}</div>
-      </nav>
-
-      {/* Hero */}
-      <div style={{ padding: '56px 28px 44px', position: 'relative', overflow: 'hidden', background: `linear-gradient(160deg, ${c.primaryColor}10 0%, #fff 50%)` }}>
-        <div style={{ position: 'absolute', top: -60, right: -80, width: 360, height: 360, borderRadius: '50%', background: `radial-gradient(circle, ${c.accentColor}18, transparent 65%)`, pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', maxWidth: 520 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, background: `${c.primaryColor}15`, marginBottom: 16 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.primaryColor }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: c.primaryColor, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{c.industry}</span>
-          </div>
-          <h1 style={{ fontSize: 34, fontWeight: 900, lineHeight: 1.1, letterSpacing: '-1.2px', marginBottom: 14, color: '#0f172a' }}>{c.tagline}</h1>
-          <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.75, marginBottom: 28 }}>{c.description}</p>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ padding: '11px 24px', borderRadius: 8, background: c.primaryColor, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: `0 8px 24px ${c.primaryColor}45` }}>{c.ctaText} →</div>
-            <div style={{ padding: '11px 20px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, fontWeight: 600, color: '#475569' }}>See Our Work</div>
-          </div>
-          <div style={{ display: 'flex', gap: 28, marginTop: 36, paddingTop: 28, borderTop: '1px solid #f1f5f9' }}>
-            {[['200+','Clients Served'],['99%','Satisfaction'],['10yr','In Business']].map(([v,l])=>(
-              <div key={l}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: c.primaryColor }}>{v}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Services */}
-      <div style={{ padding: '32px 28px', background: '#f8fafc' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: c.primaryColor, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>What We Do</div>
-        <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 20, letterSpacing: '-0.5px' }}>Services Built to Deliver Results</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-          {c.services.slice(0,3).map((s,i)=>(
-            <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: 22, marginBottom: 10 }}>{s.icon}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: '#0f172a' }}>{s.title}</div>
-              <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.6 }}>{s.description}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA Banner */}
-      <div style={{ margin: '0 28px 28px', padding: '24px 28px', borderRadius: 16, background: c.primaryColor, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Ready to work with us?</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)' }}>{c.email} · {c.phone}</div>
-        </div>
-        <div style={{ padding: '10px 22px', borderRadius: 8, background: '#fff', color: c.primaryColor, fontSize: 12, fontWeight: 800 }}>Contact Us →</div>
-      </div>
-
-      {/* Footer */}
-      <div style={{ padding: '16px 28px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 11, fontWeight: 700 }}>{c.name}</span>
-        <span style={{ fontSize: 10, color: '#94a3b8' }}>{c.address} · © {new Date().getFullYear()}</span>
-      </div>
-    </div>
-  )
-}
-
 // ── Main App ───────────────────────────────────────────────────
 export default function App() {
   const [dark, setDark] = useState(true)
   const BRAND = dark ? DARK : LIGHT
+  const [selectedTemplate, setSelectedTemplate] = useState('dark')
+  const [fullscreen, setFullscreen] = useState(false)
   const [c, setC] = useState<ClientConfig>(defaults)
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -346,21 +271,69 @@ export default function App() {
 
             {/* PREVIEW */}
             {rightTab==='preview' && (
-              <motion.div key="preview" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, overflowY:'auto', padding:20, display:'flex', flexDirection:'column', gap:14 }}>
-                {/* Browser chrome */}
-                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 14px', background:BRAND.card, borderRadius:10, border:`1px solid ${BRAND.border}` }}>
-                  <div style={{ display:'flex', gap:5 }}>
-                    {['#ef4444','#f59e0b','#22c55e'].map(col=><div key={col} style={{ width:10, height:10, borderRadius:'50%', background:col }} />)}
-                  </div>
-                  <div style={{ flex:1, textAlign:'center', fontSize:11, color:BRAND.dimmed }}>
-                    🔒 {c.name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')||'yourbusiness'}.co.za
-                  </div>
+              <motion.div key="preview" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                {/* Template selector */}
+                <div style={{ padding:'10px 16px', borderBottom:`1px solid ${BRAND.border}`, display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:BRAND.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginRight:4 }}>Template:</span>
+                  {TEMPLATES.map(t=>(
+                    <motion.button key={t.id} whileTap={{ scale:0.95 }} onClick={()=>setSelectedTemplate(t.id)}
+                      style={{ padding:'5px 12px', borderRadius:7, border:`1px solid ${selectedTemplate===t.id?BRAND.green:BRAND.border}`, background:selectedTemplate===t.id?`${BRAND.green}15`:BRAND.card, color:selectedTemplate===t.id?BRAND.green:BRAND.muted, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      {t.thumb} {t.label}
+                    </motion.button>
+                  ))}
+                  <motion.button whileTap={{ scale:0.95 }} onClick={()=>setFullscreen(true)}
+                    style={{ marginLeft:'auto', padding:'5px 14px', borderRadius:7, border:`1px solid ${BRAND.border}`, background:BRAND.card, color:BRAND.text, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    ⛶ Full Preview
+                  </motion.button>
                 </div>
-                <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,0.5)', border:`1px solid ${BRAND.border}` }}>
-                  <SitePreview c={c} />
+                {/* Browser chrome + preview */}
+                <div style={{ flex:1, overflowY:'auto', padding:16, display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 14px', background:BRAND.card, borderRadius:9, border:`1px solid ${BRAND.border}` }}>
+                    <div style={{ display:'flex', gap:5 }}>
+                      {['#ef4444','#f59e0b','#22c55e'].map(col=><div key={col} style={{ width:9, height:9, borderRadius:'50%', background:col }} />)}
+                    </div>
+                    <div style={{ flex:1, textAlign:'center', fontSize:11, color:BRAND.dimmed }}>
+                      🔒 {c.name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')||'yourbusiness'}.co.za
+                    </div>
+                  </div>
+                  <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.5)', border:`1px solid ${BRAND.border}` }}>
+                    {(() => { const T = TEMPLATES.find(t=>t.id===selectedTemplate)?.component || TEMPLATES[0].component; return <T c={c} /> })()}
+                  </div>
                 </div>
               </motion.div>
             )}
+
+            {/* FULLSCREEN OVERLAY */}
+            <AnimatePresence>
+              {fullscreen && (
+                <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                  style={{ position:'fixed', inset:0, background:'#000', zIndex:1000, display:'flex', flexDirection:'column' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', background:'#111', borderBottom:'1px solid #222', flexShrink:0 }}>
+                    <div style={{ display:'flex', gap:5 }}>
+                      {['#ef4444','#f59e0b','#22c55e'].map(col=><div key={col} style={{ width:10, height:10, borderRadius:'50%', background:col }} />)}
+                    </div>
+                    <div style={{ flex:1, textAlign:'center', fontSize:12, color:'#555' }}>
+                      🔒 {c.name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')||'yourbusiness'}.co.za
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      {TEMPLATES.map(t=>(
+                        <button key={t.id} onClick={()=>setSelectedTemplate(t.id)}
+                          style={{ padding:'4px 10px', borderRadius:6, border:`1px solid ${selectedTemplate===t.id?BRAND.green:'#333'}`, background:selectedTemplate===t.id?`${BRAND.green}20`:'transparent', color:selectedTemplate===t.id?BRAND.green:'#666', fontSize:10, fontWeight:700, cursor:'pointer' }}>
+                          {t.thumb} {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={()=>setFullscreen(false)}
+                      style={{ padding:'6px 14px', borderRadius:7, background:'#222', border:'none', color:'#888', fontSize:12, cursor:'pointer', fontWeight:700 }}>
+                      ✕ Close
+                    </button>
+                  </div>
+                  <div style={{ flex:1, overflowY:'auto' }}>
+                    {(() => { const T = TEMPLATES.find(t=>t.id===selectedTemplate)?.component || TEMPLATES[0].component; return <T c={c} /> })()}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* AI AUDIT */}
             {rightTab==='audit' && (

@@ -533,6 +533,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
     setBuilding(true); setError('')
     try {
       let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone }
+      let auditData: any = null
       if (mode === 'url' && url.trim()) {
         setStep('Analyzing existing website...')
         const r = await fetch('/api/analyze', {
@@ -541,6 +542,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         })
         const audit = await r.json()
         if (!r.ok) throw new Error(audit.error || 'Analysis failed')
+        auditData = audit
         payload = { audit }
       }
       setStep('AI is designing your full website... (~30 seconds)')
@@ -569,16 +571,22 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
       try { content = JSON.parse(raw) }
       catch { throw new Error('AI response was incomplete. Please try again.') }
 
-      // Build the full SiteData from the flat AI response
-      const businessName = mode === 'url' ? (content.name || name || 'Your Business') : name
+      // Build the full SiteData using audit data + AI-generated content
+      const businessName = auditData?.name || name || 'Your Business'
+      const businessIndustry = auditData?.industry || industry || 'Professional Services'
+      const businessPhone = auditData?.contact?.phone || phone || ''
+      const businessEmail = auditData?.contact?.email || email || ''
+      const businessAddress = auditData?.contact?.address || address || ''
+      const businessPrimary = auditData?.primaryColor || primaryColor || '#2563eb'
+
       const avatarColors = ['2563eb','16a34a','ea580c','dc2626','9333ea']
-      const avatar = (n: string, i: number) => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&size=200&background=${avatarColors[i%5]}&color=fff`
+      const avatar = (n: string, i: number) => `https://ui-avatars.com/api/?name=${encodeURIComponent(n||'User')}&size=200&background=${avatarColors[i%5]}&color=fff`
 
       const site = {
-        id: 'gen', name: businessName, tagline: content.tagline || '', logo: '',
+        id: 'gen', name: businessName, tagline: content.tagline || auditData?.tagline || '', logo: '',
         theme: {
-          primaryColor: primaryColor || '#2563eb',
-          secondaryColor: content.accentColor || '#7c3aed',
+          primaryColor: businessPrimary,
+          secondaryColor: content.accentColor || auditData?.secondaryColor || '#7c3aed',
           accentColor: content.accentColor || '#06b6d4',
           fontHeading: content.fontHeading || 'Inter',
           fontBody: content.fontBody || 'Inter',
@@ -600,14 +608,14 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
             { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
           ]},
           { name:'Services', slug:'/services', sections: [
-            { type:'hero', data: { headline:`Our ${(industry||'Professional Services')}`, subtext:'Discover the full range of services we offer.', ctaText:'Get a Quote', ctaUrl:'#contact', ctaText2:'', image:'', showStats: false } },
+            { type:'hero', data: { headline:`Our ${businessIndustry}`, subtext:'Discover the full range of services we offer.', ctaText:'Get a Quote', ctaUrl:'#contact', ctaText2:'', image:'', showStats: false } },
             { type:'services', data: { heading:'Services We Offer', subheading:'Comprehensive solutions for your business.', items: content.services||[] } },
             { type:'pricing', data: { heading:'Pricing Packages', subheading:'Transparent pricing. No hidden fees.', items: content.pricing||[] } },
             { type:'faq', data: { heading:'Frequently Asked Questions', items: content.faq||[] } },
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Contact us today for a free consultation.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
           ]},
           { name:'Contact', slug:'/contact', sections: [
-            { type:'contact', data: { heading:'Get in Touch', subtext:'We would love to hear from you. Send us a message.', phone: phone, email: email, address: address, hours:'Monday – Friday, 8:00am – 5:00pm SAST' } },
+            { type:'contact', data: { heading:'Get in Touch', subtext:'We would love to hear from you. Send us a message.', phone: businessPhone, email: businessEmail, address: businessAddress, hours:'Monday – Friday, 8:00am – 5:00pm SAST' } },
           ]},
         ]
       }

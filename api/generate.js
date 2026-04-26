@@ -2,15 +2,6 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const config = { maxDuration: 60 }
 
-const DESIGN_DIRECTIONS = {
-  professional: 'Clean grid layouts, navy/slate tones, subtle shadows, conservative spacing, trust-building design',
-  bold: 'High contrast, large typography, strong geometric shapes, powerful color blocks, confident layout',
-  playful: 'Rounded corners, bright accent colors, organic shapes, fun energetic layout',
-  minimal: 'Extreme whitespace, thin typography, barely-there borders, content-first, elegant restraint',
-  luxury: 'Deep jewel tones, serif headings, generous whitespace, understated elegance, premium feel',
-  corporate: 'Structured grid, professional blue palette, formal hierarchy, data-driven sections, trust signals',
-}
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -18,68 +9,96 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { audit } = req.body
+  const { audit, template, instructions } = req.body
   if (!audit) return res.status(400).json({ error: 'Audit data required' })
 
-  const direction = DESIGN_DIRECTIONS[audit.tone] || DESIGN_DIRECTIONS.professional
-  const servicesHtml = audit.services?.map(s => `- ${s.icon} ${s.title}: ${s.description}`).join('\n') || ''
-  const socialLinks = Object.entries(audit.social || {}).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(', ')
+  const TEMPLATE_STYLES = {
+    dark:     'Dark background #0a0a0a, gradient text headings using brand colors, glowing CTA buttons, subtle grid pattern background, modern tech aesthetic. Use dark cards with slight border glow.',
+    minimal:  'Pure white background, generous whitespace, clean black typography, barely-there borders, content-first layout. No decorative elements. Let the content breathe.',
+    bold:     'High contrast. Use primary color as full-section backgrounds. Bold oversized typography. Strong geometric dividers. Corporate and authoritative structure.',
+    creative: 'Asymmetric hero layout. One column wide text one side, large colored shape other side. Big display font. Overlapping elements. Diagonal section dividers. Modern agency energy.',
+    warm:     'Off-white or cream background, warm muted tones, rounded corners everywhere (border-radius: 20px+), friendly font pairing, welcoming and approachable.',
+    luxury:   'Deep navy or charcoal background, gold accent color, serif heading font, uppercase spaced-out labels, elegant thin dividers, premium and exclusive feel.',
+  }
+
+  const styleGuide = TEMPLATE_STYLES[template] || TEMPLATE_STYLES.minimal
+  const services = audit.services?.map(s => `  - ${s.icon} ${s.title}: ${s.description}`).join('\n') || ''
+  const social = Object.entries(audit.social || {}).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(' | ')
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    // Stream the response so Vercel doesn't timeout
     res.setHeader('Content-Type', 'text/plain; charset=utf-8')
     res.setHeader('Transfer-Encoding', 'chunked')
-    res.setHeader('X-Content-Type-Options', 'nosniff')
 
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
+      max_tokens: 16000,
       messages: [{
         role: 'user',
-        content: `You are an award-winning web designer. Generate a COMPLETE, stunning, production-ready single HTML file website.
+        content: `You are a world-class web designer. Generate a COMPLETE, beautiful, production-ready single-file HTML website. This must be a FULL website — do not truncate, do not summarize, write EVERY section completely.
 
-BRAND DATA:
-- Business: ${audit.name}
-- Industry: ${audit.industry}
-- Tagline: ${audit.tagline}
-- Description: ${audit.description}
-- Tone: ${audit.tone} | Aesthetic: ${audit.aesthetic}
-- Brand Personality: ${audit.brandPersonality}
-- Target Audience: ${audit.targetAudience}
-- Primary Color: ${audit.primaryColor}
-- Secondary Color: ${audit.secondaryColor}
-- Services:
-${servicesHtml}
-- Phone: ${audit.contact?.phone || ''}
-- Email: ${audit.contact?.email || ''}
-- Address: ${audit.contact?.address || ''}
-- Social: ${socialLinks}
-- SEO Title: ${audit.seoTitle || audit.name}
+═══════════════════════════════
+BRAND BRIEF
+═══════════════════════════════
+Business: ${audit.name}
+Industry: ${audit.industry}
+Tagline: ${audit.tagline}
+Description: ${audit.description}
+Tone: ${audit.tone} | Aesthetic: ${audit.aesthetic}
+Target Audience: ${audit.targetAudience}
+Brand Personality: ${audit.brandPersonality}
+Primary Color: ${audit.primaryColor}
+Secondary Color: ${audit.secondaryColor}
+CTA Text: ${audit.ctaText || 'Get Started'}
+Phone: ${audit.contact?.phone || ''}
+Email: ${audit.contact?.email || ''}
+Address: ${audit.contact?.address || ''}
+Social: ${social}
+SEO Title: ${audit.seoTitle || audit.name}
 
-DESIGN DIRECTION (${audit.tone}): ${direction}
+Services:
+${services}
 
-Generate a COMPLETE HTML file with:
-1. HEAD: Google Fonts (2 fonts matching tone), Tailwind CDN, AOS CDN, custom CSS with CSS variables
-2. STICKY NAV: Logo + links + CTA button + mobile menu
-3. HERO: Full-height, powerful headline, subtext, 2 CTA buttons, animated decorative elements
-4. STATS BAR: 4 impressive numbers relevant to ${audit.industry}
-5. SERVICES: Beautiful card grid, hover effects
-6. ABOUT: Split layout, compelling copy about ${audit.name}
-7. TESTIMONIALS: 3 realistic client testimonials with avatars from ui-avatars.com
-8. CTA SECTION: Bold full-width with gradient background
-9. FOOTER: Logo, description, contact info, social links, copyright
+═══════════════════════════════
+DESIGN STYLE: ${(template||'minimal').toUpperCase()}
+═══════════════════════════════
+${styleGuide}
 
-RULES:
-- Use exact brand colors: primary ${audit.primaryColor}, secondary ${audit.secondaryColor}
-- Write REAL compelling copy, not placeholder text
-- AOS data-aos attributes for scroll animations
-- Mobile responsive with Tailwind
-- Include AOS.init({ duration: 800, once: true }) in script
-- Tailwind config: tailwind.config = { theme: { extend: { colors: { primary: '${audit.primaryColor}', secondary: '${audit.secondaryColor}' } } } }
+═══════════════════════════════
+CUSTOM INSTRUCTIONS FROM CLIENT
+═══════════════════════════════
+${instructions ? instructions : 'None — use your best design judgment.'}
 
-Return ONLY the HTML starting with <!DOCTYPE html> — no markdown, no explanation.`
+═══════════════════════════════
+REQUIRED SECTIONS (ALL MUST BE COMPLETE)
+═══════════════════════════════
+1. <head>: charset, viewport, title, meta description, Google Fonts (pick 2 matching the tone), Tailwind CDN, AOS CDN, custom CSS
+2. Sticky navigation: Logo (colored box + name), nav links, CTA button, mobile hamburger (working with JS toggle)
+3. Hero section: full viewport height, headline, subheadline, 2 buttons, animated elements
+4. Trust/stats bar: 4 realistic stats for ${audit.industry}
+5. Services section: all ${audit.services?.length || 3} services as beautiful cards with icons, titles, descriptions, hover effects
+6. About section: who ${audit.name} is, what makes them different, compelling copy
+7. Testimonials: 3 realistic client testimonials (generate real-sounding names + quotes for ${audit.industry}) with star ratings and ui-avatars.com profile images
+8. Call-to-action: bold full-width section with gradient using ${audit.primaryColor}
+9. Contact section: phone, email, address, simple contact form (HTML only)
+10. Footer: logo, tagline, nav links, social links, copyright ${new Date().getFullYear()}
+
+═══════════════════════════════
+TECHNICAL REQUIREMENTS
+═══════════════════════════════
+- Tailwind: <script src="https://cdn.tailwindcss.com"></script> with config for brand colors
+- AOS: link + script tags, initialize with AOS.init({duration:900, once:true})
+- Google Fonts via link tag
+- All animations via AOS data-aos="" and CSS transitions
+- CSS custom properties: --primary, --secondary in :root
+- Mobile hamburger menu working with vanilla JS
+- Smooth scroll: html { scroll-behavior: smooth }
+- Write REAL compelling copy — specific to ${audit.name} and ${audit.industry}
+- Testimonials must sound genuine and industry-specific
+- COMPLETE the entire file — do not cut short
+
+RETURN: Only the raw HTML starting with <!DOCTYPE html>. No markdown. No code blocks. No explanation.`
       }]
     })
 
@@ -88,13 +107,9 @@ Return ONLY the HTML starting with <!DOCTYPE html> — no markdown, no explanati
         res.write(chunk.delta.text)
       }
     }
-
     res.end()
   } catch (err) {
-    if (!res.headersSent) {
-      res.status(500).json({ error: err.message })
-    } else {
-      res.end()
-    }
+    if (!res.headersSent) res.status(500).json({ error: err.message })
+    else res.end()
   }
 }

@@ -1,417 +1,569 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import JSZip from 'jszip'
+import { useStore, getActivePage, getActiveSection } from './store'
+import { SECTION_DEFS, SECTION_GROUPS } from './sections'
+import { exportSite, renderPage } from './renderer'
+import type { SectionType, Theme, Component21st } from './types'
 import './index.css'
 
+// ── Theme tokens ──────────────────────────────────────────────
 const DARK  = { bg:'#0E1625', surface:'#111d2e', card:'#162032', border:'#1e2d42', green:'#00c758', blue:'#3080ff', orange:'#fe6e00', text:'#ffffff', muted:'#6a7282', dimmed:'#3a4a5c' }
 const LIGHT = { bg:'#f0f4f8', surface:'#ffffff', card:'#f8fafc', border:'#e2e8f0', green:'#00a847', blue:'#2563eb', orange:'#ea6300', text:'#0f172a', muted:'#64748b', dimmed:'#94a3b8' }
 
-const TEMPLATES = [
-  { id:'dark',     name:'Modern Dark',      desc:'Dark background, gradient headlines, glowing buttons',       emoji:'🌑' },
-  { id:'minimal',  name:'Clean Minimal',    desc:'White, lots of space, content-first, elegant restraint',     emoji:'⬜' },
-  { id:'bold',     name:'Bold Corporate',   desc:'Strong colors, big type, high contrast, authoritative',      emoji:'💼' },
-  { id:'creative', name:'Creative Agency',  desc:'Asymmetric, expressive, modern agency energy',               emoji:'🎨' },
-  { id:'warm',     name:'Warm & Friendly',  desc:'Rounded, approachable, welcoming personality',               emoji:'🌿' },
-  { id:'luxury',   name:'Premium Luxury',   desc:'Dark + gold, serif fonts, exclusive and refined',            emoji:'✦' },
+const FONTS = ['Inter','Poppins','Raleway','Montserrat','Nunito','DM Sans','Playfair Display','Merriweather','Roboto','Open Sans']
+const THEMES_PRESETS: { name:string; theme: Partial<Theme> }[] = [
+  { name:'Ocean Blue',    theme:{ primaryColor:'#2563eb', secondaryColor:'#7c3aed', accentColor:'#06b6d4', style:'light' } },
+  { name:'Forest Green',  theme:{ primaryColor:'#16a34a', secondaryColor:'#059669', accentColor:'#84cc16', style:'light' } },
+  { name:'Sunset',        theme:{ primaryColor:'#ea580c', secondaryColor:'#dc2626', accentColor:'#f59e0b', style:'light' } },
+  { name:'Royal Purple',  theme:{ primaryColor:'#9333ea', secondaryColor:'#6366f1', accentColor:'#ec4899', style:'light' } },
+  { name:'Midnight',      theme:{ primaryColor:'#3080ff', secondaryColor:'#00c758', accentColor:'#fe6e00', style:'dark' } },
+  { name:'Rose Gold',     theme:{ primaryColor:'#be185d', secondaryColor:'#9d174d', accentColor:'#f59e0b', style:'light' } },
 ]
 
-interface Audit {
-  name:string; tagline:string; description:string; industry:string; tone:string
-  aesthetic:string; targetAudience:string; brandPersonality:string
-  primaryColor:string; secondaryColor:string; accentColor:string
-  services:{ title:string; description:string; icon:string }[]
-  whatsWorking:string[]; improvements:string[]
-  contact:{ email:string; phone:string; address:string }
-  social:Record<string,string>; allColors:string[]; fonts:string[]
-  seoTitle:string; ctaText:string
+// ── Small UI helpers ───────────────────────────────────────────
+function Btn({ children, onClick, color='primary', size='sm', disabled=false, full=false, style:sx={} }: any) {
+  const colors: Record<string,string> = { primary:'#2563eb', green:'#00c758', red:'#ef4444', ghost:'transparent', dark:'#111827' }
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ padding:size==='sm'?'7px 14px':'11px 22px', borderRadius:8, background:colors[color]||color, color: color==='ghost'?'inherit':'#fff', fontSize:size==='sm'?11:13, fontWeight:700, border:color==='ghost'?'1px solid currentColor':'none', cursor:disabled?'not-allowed':'pointer', opacity:disabled?.5:1, width:full?'100%':'auto', ...sx }}>
+      {children}
+    </button>
+  )
 }
 
-type Phase = 'idle' | 'analyzing' | 'report' | 'building' | 'done' | 'error'
+function Label({ children }: any) {
+  return <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', marginBottom:5 }}>{children}</div>
+}
 
-function Swatch({ color, B }: { color:string; B:typeof DARK }) {
-  const [copied, setCopied] = useState(false)
+// ── Section Preview (rendered in iframe) ─────────────────────
+function SiteCanvas({ B }: { B: typeof DARK }) {
+  const store = useStore()
+  const page = getActivePage(store)
+  if (!page) return null
+  const html = renderPage(store.site, page)
   return (
-    <div onClick={()=>{ navigator.clipboard.writeText(color); setCopied(true); setTimeout(()=>setCopied(false),1500) }}
-      style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
-      <div style={{ width:36, height:36, borderRadius:8, background:color, border:`1px solid ${B.border}`, boxShadow:`0 4px 12px ${color}50` }} />
-      <span style={{ fontSize:8, fontFamily:'monospace', color: copied ? B.green : B.muted }}>{copied?'copied':color}</span>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', background:B.surface, overflow:'hidden' }}>
+      {/* Viewport toggle */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'8px 16px', borderBottom:`1px solid ${B.border}`, background:B.bg, flexShrink:0 }}>
+        <div style={{ fontSize:11, color:B.muted, marginRight:8 }}>Live Preview — {page.name}</div>
+        <button onClick={()=>{ const w=window.open('','_blank'); w?.document.write(html); w?.document.close() }}
+          style={{ fontSize:10, padding:'4px 10px', borderRadius:6, background:B.card, border:`1px solid ${B.border}`, color:B.muted, cursor:'pointer' }}>
+          ⛶ Full Tab
+        </button>
+      </div>
+      <iframe
+        key={page.id + JSON.stringify(store.site.theme)}
+        srcDoc={html}
+        style={{ flex:1, border:'none', width:'100%' }}
+        title="Preview"
+        sandbox="allow-scripts allow-same-origin"
+      />
     </div>
   )
 }
 
+// ── Left sidebar: Pages + Sections ────────────────────────────
+function LeftPanel({ B }: { B: typeof DARK }) {
+  const store = useStore()
+  const activePage = getActivePage(store)
+  const [newPageName, setNewPageName] = useState('')
+  const [addingPage, setAddingPage] = useState(false)
+  const inp = { background:B.card, border:`1px solid ${B.border}`, borderRadius:7, padding:'7px 10px', color:B.text, fontSize:12, outline:'none', width:'100%', boxSizing:'border-box' as const }
+
+  return (
+    <div style={{ width:220, background:B.bg, borderRight:`1px solid ${B.border}`, display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden' }}>
+      {/* Pages */}
+      <div style={{ padding:'12px 10px', borderBottom:`1px solid ${B.border}` }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em' }}>Pages</div>
+          <button onClick={()=>setAddingPage(true)} style={{ fontSize:18, background:'none', border:'none', color:B.green, cursor:'pointer', lineHeight:1 }}>+</button>
+        </div>
+        {store.site.pages.map(p => (
+          <div key={p.id} onClick={()=>store.setActivePage(p.id)}
+            style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:8, marginBottom:3, cursor:'pointer', background:store.activePageId===p.id?`${B.green}18`:B.card, border:`1px solid ${store.activePageId===p.id?B.green:B.border}` }}>
+            <span style={{ fontSize:12, fontWeight:600, color:store.activePageId===p.id?B.green:B.text }}>📄 {p.name}</span>
+            {store.site.pages.length>1 && <button onClick={e=>{e.stopPropagation();store.deletePage(p.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:12 }}>✕</button>}
+          </div>
+        ))}
+        {addingPage && (
+          <div style={{ marginTop:8 }}>
+            <input autoFocus value={newPageName} onChange={e=>setNewPageName(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter'&&newPageName.trim()){ store.addPage(newPageName.trim()); setNewPageName(''); setAddingPage(false) } if(e.key==='Escape') setAddingPage(false) }}
+              placeholder="Page name..." style={inp} />
+            <div style={{ display:'flex', gap:6, marginTop:6 }}>
+              <Btn color={B.green} onClick={()=>{ if(newPageName.trim()){ store.addPage(newPageName.trim()); setNewPageName(''); setAddingPage(false) } }}>Add</Btn>
+              <Btn color='ghost' onClick={()=>setAddingPage(false)}>Cancel</Btn>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sections */}
+      <div style={{ flex:1, overflowY:'auto', padding:'10px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em' }}>Sections</div>
+          <button onClick={()=>store.setShowAddSection(true)} style={{ fontSize:18, background:'none', border:'none', color:B.green, cursor:'pointer', lineHeight:1 }}>+</button>
+        </div>
+        {activePage?.sections.map((sec) => {
+          const def = SECTION_DEFS[sec.type]
+          const active = store.activeSectionId === sec.id
+          return (
+            <div key={sec.id} onClick={()=>store.setActiveSection(sec.id)}
+              style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:8, marginBottom:3, cursor:'pointer', background:active?`${B.green}18`:B.card, border:`1px solid ${active?B.green:B.border}` }}>
+              <span style={{ fontSize:12, fontWeight:600, color:active?B.green:B.text }}>
+                {def?.icon||'◆'} {def?.name||sec.type}
+              </span>
+              <div style={{ display:'flex', gap:2 }}>
+                <button onClick={e=>{e.stopPropagation();store.moveSectionUp(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:11 }} title="Move up">↑</button>
+                <button onClick={e=>{e.stopPropagation();store.moveSectionDown(sec.id)}} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:11 }} title="Move down">↓</button>
+                <button onClick={e=>{e.stopPropagation();store.deleteSection(sec.id)}} style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', fontSize:11 }} title="Delete">✕</button>
+              </div>
+            </div>
+          )
+        })}
+        <button onClick={()=>store.setShowAddSection(true)}
+          style={{ width:'100%', marginTop:8, padding:'8px', borderRadius:8, border:`2px dashed ${B.border}`, background:'transparent', color:B.muted, fontSize:12, cursor:'pointer', fontWeight:600 }}>
+          + Add Section
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Right panel: Edit section or theme ────────────────────────
+function RightPanel({ B }: { B: typeof DARK }) {
+  const store = useStore()
+  const section = getActiveSection(store)
+  const [tab, setTab] = useState<'edit'|'theme'|'ai'|'components'>('edit')
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [components, setComponents] = useState<Component21st[]>([])
+  const [compQuery, setCompQuery] = useState('')
+  const [compLoading, setCompLoading] = useState(false)
+  const [selectedComp, setSelectedComp] = useState<Component21st|null>(null)
+  const [imageSearch, setImageSearch] = useState('')
+  const [, setImageLoading] = useState(false)
+  const [images, setImages] = useState<{url:string;alt:string}[]>([])
+  const [activeImageField, setActiveImageField] = useState<string|null>(null)
+
+  const inp: React.CSSProperties = { background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding:'9px 12px', color:B.text, fontSize:12, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit' }
+
+  const searchImages = async () => {
+    if (!imageSearch.trim()) return
+    setImageLoading(true)
+    try {
+      const kw = encodeURIComponent(imageSearch)
+      const urls = Array.from({ length:8 }, (_,i) => ({
+        url:`https://source.unsplash.com/800x600/?${kw}&sig=${i+Date.now()}`,
+        alt: imageSearch
+      }))
+      setImages(urls)
+    } catch {}
+    setImageLoading(false)
+  }
+
+  const askAi = async () => {
+    if (!aiPrompt.trim() || !section) return
+    setAiLoading(true)
+    try {
+      const def = SECTION_DEFS[section.type]
+      const res = await fetch('/api/ai-section', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          sectionType: section.type,
+          currentData: section.data,
+          siteName: store.site.name,
+          prompt: aiPrompt,
+          fields: def?.fields || [],
+        })
+      })
+      const data = await res.json()
+      if (data.updatedData) { store.setSectionData(section.id, { ...section.data, ...data.updatedData }); setAiPrompt('') }
+    } catch {}
+    setAiLoading(false)
+  }
+
+  const fetchComponents = async (q: string) => {
+    if (!q.trim()) return
+    setCompLoading(true)
+    try {
+      const res = await fetch(`/api/components?query=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      const list: Component21st[] = Array.isArray(data) ? data : data.results || data.components || []
+      setComponents(list.slice(0,16))
+    } catch {}
+    setCompLoading(false)
+  }
+
+  const addComponent = (comp: Component21st) => {
+    if (!comp.demo_url && !comp.preview_url) return
+    const html = comp.demo_url
+      ? `<iframe src="${comp.demo_url}" style="width:100%;height:400px;border:none" title="${comp.name}"></iframe>`
+      : `<img src="${comp.preview_url}" alt="${comp.name}" style="width:100%;border-radius:8px">`
+    store.addCustomSection(html, comp.name || 'Component')
+    setSelectedComp(null)
+  }
+
+  const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['components','◈ Library']] as const
+
+  return (
+    <div style={{ width:300, background:B.bg, borderLeft:`1px solid ${B.border}`, display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden' }}>
+      {/* Tab bar */}
+      <div style={{ display:'flex', borderBottom:`1px solid ${B.border}` }}>
+        {TABS.map(([t,l]) => (
+          <button key={t} onClick={()=>setTab(t as any)} style={{ flex:1, padding:'10px 4px', fontSize:10, fontWeight:700, border:'none', cursor:'pointer', background:'transparent', color:tab===t?B.green:B.muted, borderBottom:tab===t?`2px solid ${B.green}`:'2px solid transparent' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex:1, overflowY:'auto', padding:'14px 12px' }}>
+
+        {/* EDIT TAB */}
+        {tab==='edit' && (
+          !section ? (
+            <div style={{ textAlign:'center', padding:'32px 0', color:B.muted }}>
+              <div style={{ fontSize:24, marginBottom:8 }}>✏️</div>
+              <div style={{ fontSize:12 }}>Click a section on the left or in the preview to start editing</div>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ fontSize:13, fontWeight:800, marginBottom:4 }}>
+                {SECTION_DEFS[section.type]?.icon} {SECTION_DEFS[section.type]?.name}
+              </div>
+              {SECTION_DEFS[section.type]?.fields.map(field => {
+                const val = section.data[field.key]
+                if (field.type === 'boolean') return (
+                  <div key={field.key}>
+                    <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+                      <input type="checkbox" checked={!!val} onChange={e=>store.updateSectionData(section.id, field.key, e.target.checked)} />
+                      <span style={{ fontSize:12, fontWeight:600 }}>{field.label}</span>
+                    </label>
+                  </div>
+                )
+                if (field.type === 'image') return (
+                  <div key={field.key}>
+                    <Label>{field.label}</Label>
+                    {val && <img src={val} alt="" style={{ width:'100%', height:80, objectFit:'cover', borderRadius:8, marginBottom:8 }} />}
+                    <input value={val||''} onChange={e=>store.updateSectionData(section.id, field.key, e.target.value)} placeholder="Paste image URL..." style={inp} />
+                    <div style={{ marginTop:6, display:'flex', gap:6 }}>
+                      <input value={imageSearch} onChange={e=>setImageSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchImages()}
+                        placeholder="Search Unsplash..." style={{ ...inp, flex:1 }} />
+                      <Btn color={B.blue} onClick={()=>{ setActiveImageField(field.key); searchImages() }}>Search</Btn>
+                    </div>
+                    {activeImageField===field.key && images.length>0 && (
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:6, marginTop:8 }}>
+                        {images.map((img,i)=>(
+                          <img key={i} src={img.url} alt={img.alt} onClick={()=>{ store.updateSectionData(section.id, field.key, img.url); setImages([]); setActiveImageField(null) }}
+                            style={{ width:'100%', height:56, objectFit:'cover', borderRadius:6, cursor:'pointer', border:`2px solid transparent` }}
+                            onMouseEnter={e=>(e.currentTarget.style.border=`2px solid ${B.green}`)}
+                            onMouseLeave={e=>(e.currentTarget.style.border='2px solid transparent')} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+                if (field.type === 'list') return (
+                  <div key={field.key}>
+                    <Label>{field.label}</Label>
+                    <div style={{ fontSize:10, color:B.muted, marginBottom:6, lineHeight:1.5 }}>
+                      Click the AI tab to regenerate content, or edit the JSON below directly.
+                    </div>
+                    <textarea value={JSON.stringify(val, null, 2)} rows={8}
+                      onChange={e=>{ try { store.updateSectionData(section.id, field.key, JSON.parse(e.target.value)) } catch {} }}
+                      style={{ ...inp, resize:'vertical', fontFamily:'monospace', fontSize:10 }} />
+                  </div>
+                )
+                if (field.type === 'textarea') return (
+                  <div key={field.key}>
+                    <Label>{field.label}</Label>
+                    <textarea value={val||''} rows={3} placeholder={field.placeholder}
+                      onChange={e=>store.updateSectionData(section.id, field.key, e.target.value)}
+                      style={{ ...inp, resize:'vertical' }} />
+                  </div>
+                )
+                return (
+                  <div key={field.key}>
+                    <Label>{field.label}</Label>
+                    <input value={val||''} placeholder={field.placeholder}
+                      onChange={e=>store.updateSectionData(section.id, field.key, e.target.value)}
+                      style={inp} />
+                  </div>
+                )
+              })}
+              <button onClick={()=>store.deleteSection(section.id)}
+                style={{ marginTop:8, padding:'8px', borderRadius:8, background:'#ef444420', border:'1px solid #ef444460', color:'#ef4444', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                🗑 Delete Section
+              </button>
+            </div>
+          )
+        )}
+
+        {/* THEME TAB */}
+        {tab==='theme' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div>
+              <Label>Site Name</Label>
+              <input value={store.site.name} onChange={e=>store.setSiteName(e.target.value)} style={inp} />
+            </div>
+            <div>
+              <Label>Tagline</Label>
+              <input value={store.site.tagline} onChange={e=>store.setSiteTagline(e.target.value)} style={inp} />
+            </div>
+
+            <div>
+              <Label>Color Presets</Label>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
+                {THEMES_PRESETS.map(p => (
+                  <button key={p.name} onClick={()=>store.setTheme(p.theme)}
+                    style={{ padding:'8px', borderRadius:8, border:`1px solid ${B.border}`, background:B.card, cursor:'pointer', textAlign:'center' as const }}>
+                    <div style={{ display:'flex', gap:4, justifyContent:'center', marginBottom:5 }}>
+                      <div style={{ width:16, height:16, borderRadius:'50%', background:(p.theme as any).primaryColor }} />
+                      <div style={{ width:16, height:16, borderRadius:'50%', background:(p.theme as any).secondaryColor }} />
+                    </div>
+                    <div style={{ fontSize:9, color:B.muted, fontWeight:600 }}>{p.name}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label>Primary Color</Label>
+              <div style={{ display:'flex', gap:8 }}>
+                <input type="color" value={store.site.theme.primaryColor} onChange={e=>store.setTheme({ primaryColor:e.target.value })}
+                  style={{ width:42, height:38, border:'none', background:'none', cursor:'pointer', borderRadius:8, padding:2 }} />
+                <input value={store.site.theme.primaryColor} onChange={e=>store.setTheme({ primaryColor:e.target.value })} style={{ ...inp, fontFamily:'monospace', flex:1 }} />
+              </div>
+            </div>
+            <div>
+              <Label>Secondary Color</Label>
+              <div style={{ display:'flex', gap:8 }}>
+                <input type="color" value={store.site.theme.secondaryColor} onChange={e=>store.setTheme({ secondaryColor:e.target.value })}
+                  style={{ width:42, height:38, border:'none', background:'none', cursor:'pointer', borderRadius:8, padding:2 }} />
+                <input value={store.site.theme.secondaryColor} onChange={e=>store.setTheme({ secondaryColor:e.target.value })} style={{ ...inp, fontFamily:'monospace', flex:1 }} />
+              </div>
+            </div>
+            <div>
+              <Label>Heading Font</Label>
+              <select value={store.site.theme.fontHeading} onChange={e=>store.setTheme({ fontHeading:e.target.value })}
+                style={{ ...inp }}>
+                {FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Body Font</Label>
+              <select value={store.site.theme.fontBody} onChange={e=>store.setTheme({ fontBody:e.target.value })}
+                style={{ ...inp }}>
+                {FONTS.map(f=><option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Border Radius</Label>
+              <select value={store.site.theme.borderRadius} onChange={e=>store.setTheme({ borderRadius:e.target.value as any })}
+                style={{ ...inp }}>
+                {['none','small','medium','large','pill'].map(r=><option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Style</Label>
+              <div style={{ display:'flex', gap:8 }}>
+                {(['light','dark'] as const).map(s => (
+                  <button key={s} onClick={()=>store.setTheme({ style:s })}
+                    style={{ flex:1, padding:'8px', borderRadius:8, border:`1px solid ${store.site.theme.style===s?B.green:B.border}`, background:store.site.theme.style===s?`${B.green}15`:B.card, color:store.site.theme.style===s?B.green:B.muted, fontSize:12, fontWeight:700, cursor:'pointer', textTransform:'capitalize' as const }}>
+                    {s==='light'?'☀️ Light':'🌑 Dark'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI TAB */}
+        {tab==='ai' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ fontSize:13, fontWeight:800, marginBottom:4 }}>✦ AI Assistant</div>
+            {!section && <div style={{ fontSize:11, color:B.muted, lineHeight:1.6 }}>Select a section first, then tell the AI what to do.</div>}
+            {section && (
+              <>
+                <div style={{ fontSize:11, color:B.muted }}>Selected: <strong style={{ color:B.text }}>{SECTION_DEFS[section.type]?.name}</strong></div>
+                <div>
+                  <Label>Tell AI what to do</Label>
+                  <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} rows={4}
+                    placeholder={`Examples:\n• "Rewrite the headline to be more powerful"\n• "Add 2 more services about cleaning and maintenance"\n• "Make the copy more professional and formal"\n• "Update contact details: phone 071 000 0000"`}
+                    style={{ ...inp, resize:'none', lineHeight:1.6 }} />
+                  <Btn color={B.green} full onClick={askAi} disabled={aiLoading} style={{ marginTop:8 }}>
+                    {aiLoading ? '⏳ Working...' : '✦ Apply Changes'}
+                  </Btn>
+                </div>
+                <div style={{ background:B.card, borderRadius:10, padding:12, border:`1px solid ${B.border}` }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Quick actions</div>
+                  {['Rewrite all copy to be more compelling','Make tone more professional','Make tone more friendly and casual','Add 2 more items','Shorten all text by 40%'].map(q=>(
+                    <button key={q} onClick={()=>{ setAiPrompt(q); }}
+                      style={{ display:'block', width:'100%', textAlign:'left' as const, padding:'7px 10px', marginBottom:5, borderRadius:7, background:B.surface, border:`1px solid ${B.border}`, color:B.muted, fontSize:11, cursor:'pointer' }}>
+                      → {q}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* COMPONENTS TAB */}
+        {tab==='components' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ fontSize:13, fontWeight:800, marginBottom:4 }}>◈ Component Library</div>
+            <div style={{ fontSize:11, color:B.muted, lineHeight:1.6, marginBottom:4 }}>Browse and add premium components to any page.</div>
+            <div style={{ display:'flex', gap:6 }}>
+              <input value={compQuery} onChange={e=>setCompQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&fetchComponents(compQuery)}
+                placeholder="Search components..." style={{ ...inp, flex:1 }} />
+              <Btn color={B.blue} onClick={()=>fetchComponents(compQuery)}>Go</Btn>
+            </div>
+            <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+              {['hero section','pricing table','testimonials','navigation','footer','features grid','contact form'].map(q=>(
+                <button key={q} onClick={()=>{ setCompQuery(q); fetchComponents(q) }}
+                  style={{ padding:'4px 10px', borderRadius:999, background:B.card, border:`1px solid ${B.border}`, color:B.muted, fontSize:9, fontWeight:600, cursor:'pointer' }}>
+                  {q}
+                </button>
+              ))}
+            </div>
+            {compLoading && <div style={{ textAlign:'center', padding:20, color:B.muted, fontSize:12 }}>Loading...</div>}
+            {selectedComp && (
+              <div style={{ background:B.card, borderRadius:10, padding:12, border:`2px solid ${B.green}` }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                  <div style={{ fontSize:12, fontWeight:800 }}>{selectedComp.name}</div>
+                  <button onClick={()=>setSelectedComp(null)} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer' }}>✕</button>
+                </div>
+                {selectedComp.preview_url && <img src={selectedComp.preview_url} alt={selectedComp.name} style={{ width:'100%', borderRadius:8, marginBottom:8 }} />}
+                {selectedComp.description && <div style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.5 }}>{selectedComp.description}</div>}
+                <Btn color={B.green} full onClick={()=>addComponent(selectedComp)}>+ Add to Page</Btn>
+              </div>
+            )}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              {components.map((c,i) => (
+                <motion.div key={c.id||i} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}
+                  onClick={()=>setSelectedComp(c)}
+                  style={{ background:B.card, borderRadius:10, padding:10, cursor:'pointer', border:`1px solid ${selectedComp?.id===c.id?B.green:B.border}` }}>
+                  {c.preview_url ? <img src={c.preview_url} alt={c.name} style={{ width:'100%', height:80, objectFit:'cover', borderRadius:7, marginBottom:6 }} />
+                    : <div style={{ width:'100%', height:80, borderRadius:7, marginBottom:6, background:B.surface, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>◈</div>}
+                  <div style={{ fontSize:10, fontWeight:700, color:B.text }}>{c.name||`Component ${i+1}`}</div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Add Section Modal ─────────────────────────────────────────
+function AddSectionModal({ B }: { B: typeof DARK }) {
+  const store = useStore()
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.7)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center' }}
+      onClick={()=>store.setShowAddSection(false)}>
+      <motion.div initial={{ scale:.95, y:10 }} animate={{ scale:1, y:0 }}
+        onClick={e=>e.stopPropagation()}
+        style={{ background:B.surface, borderRadius:16, padding:24, width:600, maxHeight:'80vh', overflowY:'auto', border:`1px solid ${B.border}` }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+          <div style={{ fontSize:16, fontWeight:800 }}>Add Section</div>
+          <button onClick={()=>store.setShowAddSection(false)} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:20 }}>✕</button>
+        </div>
+        {SECTION_GROUPS.map(group => (
+          <div key={group.label} style={{ marginBottom:20 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>{group.label}</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+              {group.types.map(type => {
+                const def = SECTION_DEFS[type]
+                return (
+                  <motion.button key={type} whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }}
+                    onClick={()=>store.addSection(type as SectionType)}
+                    style={{ padding:'14px 12px', borderRadius:10, background:B.card, border:`1px solid ${B.border}`, cursor:'pointer', textAlign:'left' as const }}>
+                    <div style={{ fontSize:20, marginBottom:8 }}>{def.icon}</div>
+                    <div style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>{def.name}</div>
+                    <div style={{ fontSize:10, color:B.muted, lineHeight:1.4 }}>{def.description}</div>
+                  </motion.button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ── Main App ──────────────────────────────────────────────────
 export default function App() {
-  const [dark, setDark] = useState(true)
-  const B = dark ? DARK : LIGHT
+  const [darkMode, setDarkMode] = useState(true)
+  const B = darkMode ? DARK : LIGHT
+  const store = useStore()
+  const [exporting, setExporting] = useState(false)
 
-  const [url, setUrl]             = useState('')
-  const [phase, setPhase]         = useState<Phase>('idle')
-  const [error, setError]         = useState('')
-  const [audit, setAudit]         = useState<Audit|null>(null)
-  const [template, setTemplate]   = useState('minimal')
-  const [instructions, setInstr]  = useState('')
-  const [html, setHtml]           = useState('')
-  const [buildProgress, setBuildProgress] = useState(0)
-  const [copied, setCopied]       = useState(false)
-
-  // ── Step 1: Analyze ───────────────────────────────────────────
-  const analyze = async () => {
-    if (!url.trim()) return
-    setPhase('analyzing'); setError(''); setAudit(null); setHtml('')
-    try {
-      const res = await fetch('/api/analyze', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ url: url.trim() }),
-      })
-      const text = await res.text()
-      let data: Audit
-      try { data = JSON.parse(text) } catch { throw new Error(text.slice(0,120)) }
-      if (!res.ok) throw new Error((data as any).error || 'Analysis failed')
-      setAudit(data)
-      setPhase('report')
-    } catch (err:unknown) {
-      setError(err instanceof Error ? err.message : 'Analysis failed')
-      setPhase('error')
-    }
-  }
-
-  // ── Step 2: Build ─────────────────────────────────────────────
-  const build = async () => {
-    if (!audit) return
-    setPhase('building'); setBuildProgress(0); setHtml('')
-    try {
-      const res = await fetch('/api/generate', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ audit, template, instructions }),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        let msg = 'Build failed'
-        try { msg = JSON.parse(text).error } catch { msg = text.slice(0,100) }
-        throw new Error(msg)
-      }
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No stream')
-      const dec = new TextDecoder()
-      let acc = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        acc += dec.decode(value, { stream:true })
-        setBuildProgress(Math.min(95, Math.round((acc.length / 18000) * 100)))
-        if (acc.includes('<')) setHtml(acc)
-      }
-      if (!acc.includes('</html>')) acc += '\n</body></html>'
-      setHtml(acc)
-      setPhase('done')
-    } catch (err:unknown) {
-      setError(err instanceof Error ? err.message : 'Build failed')
-      setPhase('error')
-    }
-  }
-
-  // ── Actions ───────────────────────────────────────────────────
-  const downloadZip = async () => {
-    if (!html || !audit) return
+  const downloadSite = async () => {
+    setExporting(true)
+    const files = exportSite(store.site)
     const zip = new JSZip()
-    zip.file('index.html', html)
-    zip.file('README.md', `# ${audit.name}\n\nBuilt with SiteForge.\n\nOpen index.html in a browser or drag to Netlify Drop to deploy.`)
+    Object.entries(files).forEach(([name, content]) => zip.file(name, content))
+    zip.file('README.md', `# ${store.site.name}\n\nBuilt with SiteForge.\n\nFiles:\n${Object.keys(files).map(f=>`- ${f}`).join('\n')}\n\nDeploy: Drag folder to Netlify Drop at netlify.com/drop`)
     const blob = await zip.generateAsync({ type:'blob' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `${audit.name.toLowerCase().replace(/\s+/g,'-')}-website.zip`
+    a.download = `${store.site.name.toLowerCase().replace(/\s+/g,'-')}-website.zip`
     a.click()
+    setExporting(false)
   }
 
-  const openTab = () => {
-    if (!html) return
-    window.open(URL.createObjectURL(new Blob([html], { type:'text/html' })), '_blank')
+  const previewFull = () => {
+    const page = getActivePage(store)
+    if (!page) return
+    const html = renderPage(store.site, page)
+    const w = window.open('', '_blank')
+    w?.document.write(html)
+    w?.document.close()
   }
-
-  const copyHtml = () => {
-    navigator.clipboard.writeText(html)
-    setCopied(true); setTimeout(()=>setCopied(false),2000)
-  }
-
-  const startOver = () => {
-    setPhase('idle'); setAudit(null); setHtml(''); setError(''); setUrl(''); setInstr('')
-  }
-
-  // ── Styles ────────────────────────────────────────────────────
-  const inp: React.CSSProperties = { width:'100%', padding:'9px 12px', background:B.card, border:`1px solid ${B.border}`, borderRadius:8, color:B.text, fontSize:12, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:B.bg, color:B.text, fontFamily:"'Inter',system-ui,sans-serif", overflow:'hidden' }}>
 
-      {/* ── TOPBAR ── */}
-      <div style={{ display:'flex', alignItems:'center', padding:'0 20px', height:52, borderBottom:`1px solid ${B.border}`, flexShrink:0, gap:12 }}>
-        <div style={{ width:28, height:28, borderRadius:8, background:B.green, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:B.bg, flexShrink:0 }}>S</div>
+      {/* TOP BAR */}
+      <div style={{ display:'flex', alignItems:'center', padding:'0 16px', height:52, borderBottom:`1px solid ${B.border}`, flexShrink:0, gap:12 }}>
+        <div style={{ width:28, height:28, borderRadius:8, background:B.green, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:B.bg }}>S</div>
         <div style={{ flexShrink:0 }}>
           <div style={{ fontSize:13, fontWeight:800 }}>SiteForge</div>
-          <div style={{ fontSize:9, color:B.muted }}>AI Website Builder</div>
+          <div style={{ fontSize:9, color:B.muted }}>Website Builder</div>
         </div>
-
-        {/* URL bar — always visible */}
-        <div style={{ flex:1, display:'flex', alignItems:'center', background:B.surface, border:`1px solid ${phase==='error'?'#ef4444':audit?B.green:B.border}`, borderRadius:9, padding:'0 12px', gap:8 }}>
-          <span style={{ fontSize:12 }}>🔗</span>
-          <input value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&analyze()}
-            placeholder="Paste client's website URL..."
-            style={{ flex:1, background:'none', border:'none', outline:'none', color:B.text, fontSize:12, padding:'9px 0' }} />
-          {audit && phase!=='analyzing' && <span style={{ fontSize:10, color:B.green, fontWeight:700, whiteSpace:'nowrap' }}>✓ {audit.name}</span>}
+        <div style={{ flex:1 }} />
+        <div style={{ fontSize:12, color:B.muted }}>
+          Editing: <strong style={{ color:B.text }}>{store.site.name}</strong>
         </div>
-
-        <motion.button whileTap={{ scale:0.95 }} onClick={analyze}
-          disabled={phase==='analyzing'||phase==='building'}
-          style={{ padding:'0 16px', height:36, borderRadius:8, background:phase==='analyzing'?B.card:B.green, color:phase==='analyzing'?B.muted:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:'pointer', flexShrink:0 }}>
-          {phase==='analyzing' ? '⏳ Analyzing...' : audit ? '↻ Re-analyze' : '✦ Analyze'}
-        </motion.button>
-
-        {phase==='done' && (
-          <button onClick={startOver} style={{ padding:'0 12px', height:36, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:12, cursor:'pointer' }}>
-            + New Site
-          </button>
-        )}
-
-        <motion.button whileTap={{ scale:0.92 }} onClick={()=>setDark(d=>!d)}
-          style={{ width:36, height:36, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.text, fontSize:16, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {dark?'☀️':'🌙'}
-        </motion.button>
+        <button onClick={()=>setDarkMode(d=>!d)}
+          style={{ width:34, height:34, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          {darkMode?'☀️':'🌙'}
+        </button>
+        <button onClick={previewFull}
+          style={{ padding:'0 14px', height:34, borderRadius:8, border:`1px solid ${B.border}`, background:B.card, color:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          ⛶ Preview
+        </button>
+        <button onClick={downloadSite} disabled={exporting}
+          style={{ padding:'0 16px', height:34, borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:'pointer', opacity:exporting?.6:1 }}>
+          {exporting ? '⏳...' : '↓ Download ZIP'}
+        </button>
       </div>
 
-      {/* ── BODY ── */}
-      <div style={{ flex:1, overflow:'hidden', display:'flex' }}>
-        <AnimatePresence mode="wait">
-
-          {/* IDLE */}
-          {phase==='idle' && (
-            <motion.div key="idle" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:24, padding:40, textAlign:'center' }}>
-              <div style={{ fontSize:64, opacity:0.15 }}>🌐</div>
-              <div>
-                <div style={{ fontSize:24, fontWeight:900, marginBottom:8 }}>Build stunning websites in minutes</div>
-                <div style={{ fontSize:14, color:B.muted, maxWidth:460, lineHeight:1.7 }}>Paste any client website URL. The AI will audit their brand, then you choose a style and give instructions before building — so you only generate once.</div>
-              </div>
-              <div style={{ display:'flex', gap:12 }}>
-                {['🔍 Brand audit','🎨 Template choice','✍️ Your instructions','⚡ Build once'].map((step,i)=>(
-                  <div key={i} style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:'14px 18px', fontSize:12, fontWeight:600, color:B.muted }}>{step}</div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* ANALYZING */}
-          {phase==='analyzing' && (
-            <motion.div key="analyzing" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20 }}>
-              <motion.div animate={{ rotate:360 }} transition={{ repeat:Infinity, duration:1.5, ease:'linear' }}
-                style={{ width:48, height:48, borderRadius:'50%', border:`3px solid ${B.border}`, borderTopColor:B.green }} />
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Analyzing website...</div>
-                <div style={{ fontSize:12, color:B.muted }}>Reading brand colors, fonts, services, content and tone</div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ERROR */}
-          {phase==='error' && (
-            <motion.div key="error" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16 }}>
-              <div style={{ fontSize:32 }}>⚠️</div>
-              <div style={{ fontSize:15, fontWeight:700 }}>Something went wrong</div>
-              <div style={{ background:'#ef444420', border:'1px solid #ef4444', borderRadius:10, padding:'12px 20px', fontSize:12, color:'#ef4444', maxWidth:400, textAlign:'center' }}>{error}</div>
-              <button onClick={startOver} style={{ padding:'10px 24px', borderRadius:8, background:B.green, color:B.bg, fontSize:13, fontWeight:700, border:'none', cursor:'pointer' }}>Try Again</button>
-            </motion.div>
-          )}
-
-          {/* BRAND REPORT */}
-          {phase==='report' && audit && (
-            <motion.div key="report" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} style={{ flex:1, display:'flex', overflow:'hidden' }}>
-
-              {/* Left: Brand Report */}
-              <div style={{ width:340, borderRight:`1px solid ${B.border}`, overflowY:'auto', padding:'20px 16px', display:'flex', flexDirection:'column', gap:14 }}>
-                <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:B.green, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Brand Analysis</div>
-                  <div style={{ fontSize:18, fontWeight:900, marginBottom:2 }}>{audit.name}</div>
-                  <div style={{ fontSize:11, color:B.muted, marginBottom:10 }}>{audit.industry}</div>
-                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                    {[audit.tone, audit.aesthetic, ...(audit.brandPersonality?.split(',')||[])].filter(Boolean).map((tag,i)=>(
-                      <span key={i} style={{ fontSize:9, fontWeight:700, padding:'3px 8px', borderRadius:999, background:`${B.blue}20`, color:B.blue }}>{tag.trim()}</span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Colors */}
-                <div style={{ background:B.card, borderRadius:10, padding:'12px', border:`1px solid ${B.border}` }}>
-                  <div style={{ fontSize:9, fontWeight:700, color:B.green, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Brand Colors</div>
-                  <div style={{ display:'flex', gap:10, marginBottom:10 }}>
-                    {[['Primary',audit.primaryColor],['Secondary',audit.secondaryColor],['Accent',audit.accentColor]].map(([l,c])=>(
-                      <div key={l} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }} onClick={()=>navigator.clipboard.writeText(c)}>
-                        <div style={{ width:44, height:44, borderRadius:10, background:c, border:`1px solid ${B.border}`, boxShadow:`0 4px 14px ${c}50` }} />
-                        <span style={{ fontSize:9, color:B.muted }}>{l}</span>
-                        <span style={{ fontSize:8, fontFamily:'monospace', color:B.dimmed }}>{c}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                    {audit.allColors?.map((col,i)=><Swatch key={i} color={col} B={B} />)}
-                  </div>
-                </div>
-
-                {/* AI insights */}
-                <div style={{ background:B.card, borderRadius:10, padding:'12px', border:`1px solid ${B.border}` }}>
-                  <div style={{ fontSize:9, fontWeight:700, color:B.green, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>AI Observations</div>
-                  <div style={{ fontSize:11, color:B.muted, lineHeight:1.6, marginBottom:8 }}><strong style={{ color:B.text }}>Audience:</strong> {audit.targetAudience}</div>
-                  {audit.whatsWorking?.length > 0 && <>
-                    <div style={{ fontSize:10, fontWeight:700, color:B.green, marginBottom:6 }}>What's working ✓</div>
-                    {audit.whatsWorking.map((w,i)=><div key={i} style={{ fontSize:10, color:B.muted, marginBottom:4, display:'flex', gap:6 }}><span style={{ color:B.green }}>✓</span>{w}</div>)}
-                  </>}
-                  {audit.improvements?.length > 0 && <>
-                    <div style={{ fontSize:10, fontWeight:700, color:B.orange, marginBottom:6, marginTop:10 }}>Improvements needed →</div>
-                    {audit.improvements.map((w,i)=><div key={i} style={{ fontSize:10, color:B.muted, marginBottom:4, display:'flex', gap:6 }}><span style={{ color:B.orange }}>→</span>{w}</div>)}
-                  </>}
-                </div>
-
-                {/* Services found */}
-                <div style={{ background:B.card, borderRadius:10, padding:'12px', border:`1px solid ${B.border}` }}>
-                  <div style={{ fontSize:9, fontWeight:700, color:B.green, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Services Detected</div>
-                  {audit.services?.map((s,i)=>(
-                    <div key={i} style={{ display:'flex', gap:8, marginBottom:8, alignItems:'flex-start' }}>
-                      <span style={{ fontSize:16 }}>{s.icon}</span>
-                      <div><div style={{ fontSize:11, fontWeight:700 }}>{s.title}</div><div style={{ fontSize:10, color:B.muted, lineHeight:1.4 }}>{s.description}</div></div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Contact */}
-                {(audit.contact?.email || audit.contact?.phone) && (
-                  <div style={{ background:B.card, borderRadius:10, padding:'12px', border:`1px solid ${B.border}` }}>
-                    <div style={{ fontSize:9, fontWeight:700, color:B.green, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Contact Detected</div>
-                    {[['📧',audit.contact.email],['📞',audit.contact.phone],['📍',audit.contact.address]].filter(([,v])=>v).map(([icon,val])=>(
-                      <div key={icon} style={{ fontSize:11, color:B.muted, marginBottom:4 }}>{icon} {val}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Template + Instructions + Build */}
-              <div style={{ flex:1, overflowY:'auto', padding:'20px 24px', display:'flex', flexDirection:'column', gap:20 }}>
-
-                {/* Template picker */}
-                <div>
-                  <div style={{ fontSize:14, fontWeight:800, marginBottom:4 }}>Choose a template style</div>
-                  <div style={{ fontSize:12, color:B.muted, marginBottom:14 }}>This tells the AI what design direction to take. You can also describe anything specific below.</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
-                    {TEMPLATES.map(t=>(
-                      <motion.div key={t.id} whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }}
-                        onClick={()=>setTemplate(t.id)}
-                        style={{ background:template===t.id?`${B.green}15`:B.card, border:`2px solid ${template===t.id?B.green:B.border}`, borderRadius:12, padding:'16px 14px', cursor:'pointer', transition:'border-color 0.15s' }}>
-                        <div style={{ fontSize:22, marginBottom:8 }}>{t.emoji}</div>
-                        <div style={{ fontSize:12, fontWeight:800, marginBottom:4, color:template===t.id?B.green:B.text }}>{t.name}</div>
-                        <div style={{ fontSize:10, color:B.muted, lineHeight:1.5 }}>{t.desc}</div>
-                        {template===t.id && <div style={{ marginTop:8, fontSize:9, color:B.green, fontWeight:700 }}>✓ Selected</div>}
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom instructions */}
-                <div>
-                  <div style={{ fontSize:14, fontWeight:800, marginBottom:4 }}>Any specific instructions? <span style={{ fontSize:11, fontWeight:400, color:B.muted }}>(optional)</span></div>
-                  <div style={{ fontSize:12, color:B.muted, marginBottom:10 }}>Tell the AI anything extra — sections to add, things to include, tone adjustments, anything.</div>
-                  <textarea
-                    value={instructions}
-                    onChange={e=>setInstr(e.target.value)}
-                    rows={4}
-                    placeholder={`Examples:\n• "Add a gallery section with 6 photos"\n• "Include a FAQ section about pricing"\n• "Make it more playful, use emoji in headings"\n• "Add WhatsApp chat button"`}
-                    style={{ ...inp, resize:'none', lineHeight:1.6 }}
-                  />
-                </div>
-
-                {/* Build button */}
-                <div style={{ background:B.card, borderRadius:14, padding:20, border:`1px solid ${B.border}` }}>
-                  <div style={{ fontSize:13, fontWeight:800, marginBottom:4 }}>Ready to build?</div>
-                  <div style={{ fontSize:11, color:B.muted, marginBottom:16, lineHeight:1.6 }}>
-                    The AI will generate a complete, custom-designed website for <strong style={{ color:B.text }}>{audit.name}</strong> using the <strong style={{ color:B.green }}>{TEMPLATES.find(t=>t.id===template)?.name}</strong> style.
-                    {instructions && <> It will also follow your custom instructions.</>}
-                    {' '}This takes about 30–45 seconds.
-                  </div>
-                  <motion.button whileTap={{ scale:0.97 }} onClick={build}
-                    style={{ width:'100%', padding:'14px', borderRadius:10, background:B.green, color:B.bg, fontSize:14, fontWeight:900, border:'none', cursor:'pointer', letterSpacing:'-0.3px' }}>
-                    ⚡ Build Website Now
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* BUILDING */}
-          {phase==='building' && (
-            <motion.div key="building" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-              {/* Progress bar */}
-              <div style={{ padding:'12px 20px', borderBottom:`1px solid ${B.border}`, flexShrink:0, background:B.bg }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                  <div style={{ fontSize:12, fontWeight:700 }}>🎨 Building {audit?.name} website...</div>
-                  <div style={{ fontSize:11, color:B.muted }}>{buildProgress}%</div>
-                </div>
-                <div style={{ height:4, background:B.card, borderRadius:999, overflow:'hidden' }}>
-                  <motion.div animate={{ width:`${buildProgress}%` }} transition={{ duration:0.3 }}
-                    style={{ height:'100%', background:B.green, borderRadius:999 }} />
-                </div>
-                <div style={{ fontSize:10, color:B.muted, marginTop:6 }}>Writing HTML, adding animations, crafting copy...</div>
-              </div>
-              {/* Live iframe preview */}
-              {html ? (
-                <iframe srcDoc={html} style={{ flex:1, border:'none', width:'100%', opacity:0.7 }} title="Building..." sandbox="allow-scripts allow-same-origin" />
-              ) : (
-                <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}>
-                  <motion.div animate={{ rotate:360 }} transition={{ repeat:Infinity, duration:1.5, ease:'linear' }}
-                    style={{ width:40, height:40, borderRadius:'50%', border:`3px solid ${B.border}`, borderTopColor:B.green }} />
-                  <div style={{ fontSize:12, color:B.muted }}>Starting generation...</div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* DONE */}
-          {phase==='done' && html && (
-            <motion.div key="done" initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-              {/* Browser chrome */}
-              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', background:B.card, borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
-                <div style={{ display:'flex', gap:5 }}>
-                  {['#ef4444','#f59e0b','#22c55e'].map(col=><div key={col} style={{ width:10, height:10, borderRadius:'50%', background:col }} />)}
-                </div>
-                <div style={{ flex:1, textAlign:'center', background:B.surface, borderRadius:6, padding:'5px 12px', fontSize:11, color:B.dimmed }}>
-                  🔒 {audit?.name?.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'')||'website'}.co.za
-                </div>
-                <div style={{ display:'flex', gap:6 }}>
-                  <button onClick={()=>setPhase('report')} style={{ padding:'4px 10px', borderRadius:6, background:B.surface, border:`1px solid ${B.border}`, color:B.muted, fontSize:10, cursor:'pointer', fontWeight:600 }}>← Edit & Rebuild</button>
-                  <button onClick={openTab} style={{ padding:'4px 10px', borderRadius:6, background:B.surface, border:`1px solid ${B.border}`, color:B.muted, fontSize:10, cursor:'pointer' }}>⛶ Full tab</button>
-                </div>
-              </div>
-              <iframe srcDoc={html} style={{ flex:1, border:'none', width:'100%' }} title="Website Preview" sandbox="allow-scripts allow-same-origin" />
-            </motion.div>
-          )}
-
-        </AnimatePresence>
+      {/* BODY */}
+      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+        <LeftPanel B={B} />
+        <SiteCanvas B={B} />
+        <RightPanel B={B} />
       </div>
 
-      {/* ── ACTION BAR (only when done) ── */}
-      {phase==='done' && (
-        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 16px', borderTop:`1px solid ${B.border}`, background:B.bg, flexShrink:0 }}>
-          <div style={{ fontSize:11, color:B.muted }}>
-            <strong style={{ color:B.green }}>✓ {audit?.name}</strong> — {TEMPLATES.find(t=>t.id===template)?.name} style
-          </div>
-          <div style={{ flex:1 }} />
-          <button onClick={()=>setPhase('report')} style={{ padding:'0 14px', height:34, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, cursor:'pointer', fontWeight:600 }}>
-            ← Back to Edit
-          </button>
-          <button onClick={copyHtml} style={{ padding:'0 14px', height:34, borderRadius:8, border:`1px solid ${B.border}`, background:B.surface, color:copied?B.green:B.text, fontSize:11, fontWeight:700, cursor:'pointer' }}>
-            {copied ? '✓ Copied' : '⎘ Copy HTML'}
-          </button>
-          <button onClick={downloadZip} style={{ padding:'0 16px', height:34, borderRadius:8, background:B.blue, color:'#fff', fontSize:12, fontWeight:700, border:'none', cursor:'pointer' }}>
-            ↓ Download ZIP
-          </button>
-          <button onClick={openTab} style={{ padding:'0 16px', height:34, borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:700, border:'none', cursor:'pointer' }}>
-            ⛶ Full Preview
-          </button>
-        </div>
-      )}
+      {/* ADD SECTION MODAL */}
+      <AnimatePresence>
+        {store.showAddSection && <AddSectionModal B={B} />}
+      </AnimatePresence>
     </div>
   )
 }

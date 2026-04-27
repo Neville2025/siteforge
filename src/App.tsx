@@ -160,7 +160,8 @@ function LeftPanel({ B }: { B: typeof DARK }) {
 function RightPanel({ B }: { B: typeof DARK }) {
   const store = useStore()
   const section = getActiveSection(store)
-  const [tab, setTab] = useState<'edit'|'theme'|'ai'|'components'>('edit')
+  const tab = store.rightTab
+  const setTab = store.setRightTab
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [blockCategory, setBlockCategory] = useState('All')
@@ -219,9 +220,7 @@ function RightPanel({ B }: { B: typeof DARK }) {
     if (!page) return
     const updatedSections = [...page.sections, newSec]
     const updatedPages = store.site.pages.map(p => p.id === page.id ? { ...p, sections: updatedSections } : p)
-    useStore.setState({ site: { ...store.site, pages: updatedPages }, activeSectionId: newSec.id })
-    // Switch to edit tab so they can immediately customize
-    setTab('edit')
+    useStore.setState({ site: { ...store.site, pages: updatedPages }, activeSectionId: newSec.id, rightTab: 'edit' })
   }
 
   const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['components','◈ Blocks']] as const

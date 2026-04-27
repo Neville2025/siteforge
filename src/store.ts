@@ -35,6 +35,7 @@ interface BuilderState {
   site: SiteData
   activePageId: string
   activeSectionId: string | null
+  rightTab: 'edit' | 'theme' | 'ai' | 'components'
   showAddSection: boolean
   aiLoading: boolean
 
@@ -62,6 +63,7 @@ interface BuilderState {
   addCustomSection: (html: string, name: string) => void
 
   // UI
+  setRightTab: (tab: 'edit' | 'theme' | 'ai' | 'components') => void
   setShowAddSection: (v: boolean) => void
   setAiLoading: (v: boolean) => void
 
@@ -75,6 +77,7 @@ export const useStore = create<BuilderState>()(
       site: DEFAULT_SITE,
       activePageId: DEFAULT_SITE.pages[0].id,
       activeSectionId: null,
+      rightTab: 'edit',
       showAddSection: false,
       aiLoading: false,
 
@@ -98,7 +101,8 @@ export const useStore = create<BuilderState>()(
         site: { ...s.site, pages: s.site.pages.map(p => p.id === id ? { ...p, name } : p) }
       })),
 
-      setActiveSection: (id) => set({ activeSectionId: id }),
+      setActiveSection: (id) => set({ activeSectionId: id, rightTab: id ? 'edit' : 'edit' }),
+      setRightTab: (tab) => set({ rightTab: tab }),
 
       addSection: (type) => {
         const section: Section = { id: uuid(), type, data: { ...SECTION_DEFS[type].defaultData } }

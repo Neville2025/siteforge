@@ -11,7 +11,18 @@ export default async function handler(req, res) {
 
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY in the deployment environment.' })
 
-  const { name, industry, description, services, phone, email, address, primaryColor, secondaryColor, tone, audit, country } = req.body
+  const { name, industry, description, services, phone, email, address, primaryColor, secondaryColor, tone, audit, country, persona } = req.body
+  const PERSONA_PROMPTS = {
+    minimal:    'Minimal aesthetic. Lots of whitespace. Restrained typography. Subtle motion. Lighter palette unless dark requested. Use Inter/Inter, small radius.',
+    bold:       'Bold and confident. High-contrast. Big type. Full-bleed sections. Use Poppins/Inter, medium radius, dark palette friendly.',
+    luxury:     'Luxury aesthetic. Serif headings (Playfair Display). Deep colors with gold accent. Elegant spacing. Subtle motion. Small radius.',
+    playful:    'Playful and friendly. Soft pastels. Rounded corners (large radius). Animated, lively. Poppins/Nunito.',
+    corporate:  'Corporate and authoritative. Blues. Structured grid. Photography-led. Montserrat/Inter, small radius.',
+    tech:       'Tech aesthetic. Dark mode default. Gradient hero. DM Sans. Medium radius. Lively motion.',
+    wellness:   'Wellness aesthetic. Warm earth tones. Generous spacing. Calm motion. Merriweather/Inter, large radius.',
+    editorial:  'Editorial / magazine style. Mixed serif + sans typography. Asymmetric layouts. Playfair Display + DM Sans.',
+  }
+  const personaHint = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.minimal
 
   if (!name && !audit?.name) return res.status(400).json({ error: 'Business name required' })
 
@@ -225,6 +236,8 @@ Tax: ${hint.tax}
 Use these realistic names: ${hint.names}
 Reference these cities (when location-relevant): ${hint.cities}
 ${hint.extra}
+
+DESIGN PERSONA: ${persona || 'minimal'}. ${personaHint}
 
 Write COMPELLING, INDUSTRY-SPECIFIC content. NOT generic placeholders. Every line should be specific to ${business.name} and ${business.industry}.
 

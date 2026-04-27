@@ -7,6 +7,7 @@ import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
 import { exportSite, renderPage } from './renderer'
 import { IMAGES, IMAGE_CATEGORIES, searchImages, type LibraryImage } from './imageLibrary'
 import { COUNTRY_LIST, COUNTRIES, DEFAULT_COUNTRY, type CountryCode } from './locale/profiles'
+import { PERSONAS, PERSONA_LIST, pickPersona, type PersonaId } from './personas'
 import { TEMPLATES, type SiteTemplate } from './templates'
 import { listSavedTemplates, saveTemplate, deleteSavedTemplate, previewFor, type SavedTemplate } from './savedTemplates'
 import { v4 as uuid } from 'uuid'
@@ -1096,6 +1097,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
   const [primaryColor, setPrimaryColor] = useState('#2563eb')
   const [tone, setTone] = useState('professional')
   const [country, setCountry] = useState<CountryCode>(store.site.country as CountryCode || DEFAULT_COUNTRY)
+  const [persona, setPersona] = useState<PersonaId | 'auto'>('auto')
   const [building, setBuilding] = useState(false)
   const [step, setStep] = useState('')
   const [error, setError] = useState('')
@@ -1105,7 +1107,9 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
   const build = async () => {
     setBuilding(true); setError('')
     try {
-      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone, country }
+      const resolvedPersonaId: PersonaId = persona === 'auto' ? pickPersona(industry || '') : persona
+      const resolvedPersona = PERSONAS[resolvedPersonaId]
+      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone, country, persona: resolvedPersonaId }
       let auditData: any = null
       if (mode === 'url' && url.trim()) {
         setStep('Analyzing existing website...')
@@ -1116,7 +1120,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         const audit = await r.json()
         if (!r.ok) throw new Error(audit.error || 'Analysis failed')
         auditData = audit
-        payload = { audit, country }
+        payload = { audit, country, persona: resolvedPersonaId }
       }
       setStep('AI is designing your full website... (~30 seconds)')
       const res = await fetch('/api/build-site', {
@@ -1180,20 +1184,20 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         widget: { enabled: !!businessPhone, channel: 'whatsapp' as const, number: businessPhone, message: `Hi, I came from your ${businessName} website and wanted to ask...` },
         theme: {
           primaryColor: businessPrimary,
-          secondaryColor: content.accentColor || auditData?.secondaryColor || '#7c3aed',
-          accentColor: content.accentColor || '#06b6d4',
-          fontHeading: content.fontHeading || 'Inter',
-          fontBody: content.fontBody || 'Inter',
-          borderRadius: content.borderRadius || 'medium',
-          style: content.style || 'light',
+          secondaryColor: content.accentColor || auditData?.secondaryColor || resolvedPersona.paletteHint.secondary,
+          accentColor: content.accentColor || resolvedPersona.paletteHint.accent,
+          fontHeading: content.fontHeading || resolvedPersona.fontHeading,
+          fontBody: content.fontBody || resolvedPersona.fontBody,
+          borderRadius: content.borderRadius || resolvedPersona.borderRadius,
+          style: content.style || resolvedPersona.paletteHint.style,
         },
         pages: [
           { name:'Home', slug:'/', sections: [
-            { type:'hero', data: { headline: content.heroHeadline, subtext: content.heroSubtext, ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'Learn More', image: content.heroImage, showStats: true } },
+            { type:'hero', data: { headline: content.heroHeadline, subtext: content.heroSubtext, ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'Learn More', image: content.heroImage, showStats: true, variant: resolvedPersona.variants.hero || 'default' } },
             { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
             { type:'services', data: { heading:'What We Offer', subheading:'Professional services tailored to your needs.', items: servicesArr } },
             { type:'features', data: { heading:'Why Choose Us', subheading:'What makes us different.', items: (content.features && content.features.length > 0) ? content.features.map((f:any)=>({ icon:f.icon||'check', title:f.title, desc:f.desc })) : [{ icon:'check', title:'Edit to add a feature', desc:'Click to edit. Add a real differentiator.' }] } },
-            { type:'testimonials', data: { heading:'What Clients Say', items: testimonialsArr } },
+            { type:'testimonials', data: { heading:'What Clients Say', items: testimonialsArr, variant: resolvedPersona.variants.testimonials || 'cards' } },
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Take the next step today. We are here to help.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
           ]},
           { name:'About', slug:'/about', sections: [
@@ -1258,13 +1262,22 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         </div>
 
         {!building && <>
-          <div style={{ marginBottom:14 }}>
-            <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Country</div>
-            <select value={country} onChange={e=>setCountry(e.target.value as CountryCode)} style={inp}>
-              {COUNTRY_LIST.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name} — {c.currencyCode}</option>)}
-            </select>
-            <div style={{ fontSize:10, color:B.muted, marginTop:4, lineHeight:1.5 }}>AI uses local names, currency ({COUNTRIES[country].currencySymbol}), idioms, and the right privacy law ({COUNTRIES[country].privacyLaw}).</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Country</div>
+              <select value={country} onChange={e=>setCountry(e.target.value as CountryCode)} style={inp}>
+                {COUNTRY_LIST.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name} — {c.currencyCode}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Design persona</div>
+              <select value={persona} onChange={e=>setPersona(e.target.value as any)} style={inp}>
+                <option value="auto">✨ Auto (pick from industry)</option>
+                {PERSONA_LIST.map(p => <option key={p.id} value={p.id}>{p.emoji} {p.name} — {p.description.slice(0,40)}…</option>)}
+              </select>
+            </div>
           </div>
+          <div style={{ fontSize:10, color:B.muted, marginTop:-8, marginBottom:12, lineHeight:1.5 }}>{COUNTRIES[country].flag} {COUNTRIES[country].name}: {COUNTRIES[country].currencySymbol} {COUNTRIES[country].currencyCode}, {COUNTRIES[country].privacyLaw}. Persona drives fonts, palette, layout & animation.</div>
 
           <div style={{ display:'flex', gap:6, marginBottom:18 }}>
             <button onClick={()=>setMode('manual')} style={{ flex:1, padding:'10px', borderRadius:9, border:`1px solid ${mode==='manual'?B.green:B.border}`, background:mode==='manual'?`${B.green}15`:B.card, color:mode==='manual'?B.green:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>

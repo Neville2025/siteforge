@@ -100,6 +100,18 @@ function css(theme: Theme) {
     .mobile-menu.open{display:flex}
     .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:8px 0;border-bottom:1px solid ${theme.style==='dark'?'#222':'#f0f0f0'}}
     @media(max-width:768px){.nav-links{display:none}.hamburger{display:flex}}
+    /* Animations */
+    @keyframes sf-gradient { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    @keyframes sf-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    @keyframes sf-count-blur { 0%{filter:blur(8px);opacity:0} 100%{filter:blur(0);opacity:1} }
+    .sf-gradient-text { background:linear-gradient(120deg, var(--primary), var(--secondary), var(--accent), var(--primary)); background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation: sf-gradient 8s ease infinite }
+    .sf-marquee-track { display:flex; gap:24px; animation: sf-marquee 40s linear infinite; will-change:transform }
+    .sf-marquee:hover .sf-marquee-track { animation-play-state:paused }
+    .sf-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .15s }
+    .sf-card:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(0,0,0,.12) }
+    .sf-btn-primary { position:relative; overflow:hidden }
+    .sf-btn-primary::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.25) 0%, transparent 60%); opacity:0; transition:opacity .2s }
+    .sf-btn-primary:hover::after { opacity:1 }
     /* Mobile responsiveness for section grids */
     @media(max-width:900px){
       .sf-grid-2{grid-template-columns:1fr !important;gap:32px !important}
@@ -153,15 +165,56 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
   if (sec.type === 'custom21st') return `<section style="padding:60px 0">${d.html||''}</section>`
 
   switch (sec.type) {
-    case 'hero': return `
-<section style="min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden;${d.image?`background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url('${d.image}') center/cover`:dark?'background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%)':'background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,#fff) 0%,#fff 60%)'}" data-sf-bgimage="image">
+    case 'hero': {
+      const variant = d.variant || 'default'
+
+      if (variant === 'split' && d.image) {
+        return `
+<section style="padding:60px 0">
+  <div class="container">
+    <div class="sf-grid-2" style="display:grid;grid-template-columns:1.05fr 1fr;gap:60px;align-items:center">
+      <div data-aos="fade-right">
+        <div class="section-label">✦ ${d.eyebrow||'Welcome'}</div>
+        <h1 data-sf-field="headline" style="font-size:clamp(36px,5.5vw,64px);letter-spacing:-2px;margin-bottom:20px">${d.headline}</h1>
+        <p data-sf-field="subtext" style="font-size:18px;line-height:1.75;margin-bottom:36px;max-width:520px;color:${dark?'#bbb':'#555'}">${d.subtext}</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="${d.ctaUrl||'#contact'}" class="btn btn-primary sf-btn-primary" data-sf-field="ctaText">${d.ctaText}</a>
+          ${d.ctaText2?`<a href="#" class="btn btn-outline" data-sf-field="ctaText2">${d.ctaText2}</a>`:''}
+        </div>
+      </div>
+      <div data-aos="fade-left" data-aos-delay="100">
+        <img src="${imgUrl(d.image,1200)}" ${srcSet(d.image,800)} alt="" data-sf-image="image" style="width:100%;height:540px;object-fit:cover;border-radius:var(--radius);box-shadow:0 30px 80px rgba(0,0,0,.18)">
+      </div>
+    </div>
+  </div>
+</section>`
+      }
+
+      if (variant === 'centered') {
+        return `
+<section style="min-height:80vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px;background:${dark?'linear-gradient(135deg,#0a0a0a,#1a1a2e)':'linear-gradient(160deg,color-mix(in srgb,var(--primary) 6%,#fff),#fff)'}">
+  <div data-aos="zoom-in" style="max-width:780px">
+    <div class="section-label">✦ ${d.eyebrow||'Welcome'}</div>
+    <h1 data-sf-field="headline" class="sf-gradient-text" style="font-size:clamp(40px,7vw,84px);letter-spacing:-2.5px;margin-bottom:24px;line-height:1.05;font-weight:900">${d.headline}</h1>
+    <p data-sf-field="subtext" style="font-size:19px;line-height:1.75;margin:0 auto 36px;max-width:580px;color:${dark?'#bbb':'#555'}">${d.subtext}</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+      <a href="${d.ctaUrl||'#contact'}" class="btn btn-primary sf-btn-primary" data-sf-field="ctaText">${d.ctaText}</a>
+      ${d.ctaText2?`<a href="#" class="btn btn-outline" data-sf-field="ctaText2">${d.ctaText2}</a>`:''}
+    </div>
+  </div>
+</section>`
+      }
+
+      // Default / fullbleed: image background with parallax + counter-up stats.
+      return `
+<section ${d.image?'data-parallax="0.25"':''} style="min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden;${d.image?`background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url('${d.image}') center/cover`:dark?'background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%)':'background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,#fff) 0%,#fff 60%)'}" data-sf-bgimage="image">
   <div class="container" style="position:relative;z-index:1;padding:60px 24px">
     <div style="max-width:680px" data-aos="fade-up">
-      <div class="section-label" style="${d.image?'color:#fff':''}">${theme.style==='dark'||d.image?'✦ Welcome':'✦ Welcome'}</div>
+      <div class="section-label" style="${d.image?'color:#fff':''}">✦ ${d.eyebrow||'Welcome'}</div>
       <h1 data-sf-field="headline" style="font-size:clamp(36px,5.5vw,64px);letter-spacing:-2px;margin-bottom:20px;${d.image?'color:#fff':''}">${d.headline}</h1>
       <p data-sf-field="subtext" style="font-size:18px;line-height:1.75;margin-bottom:36px;max-width:520px;${d.image?'color:rgba(255,255,255,.85)':dark?'color:#bbb':'color:#555'}">${d.subtext}</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a href="${d.ctaUrl||'#contact'}" class="btn btn-primary" data-sf-field="ctaText">${d.ctaText}</a>
+        <a href="${d.ctaUrl||'#contact'}" class="btn btn-primary sf-btn-primary" data-sf-field="ctaText">${d.ctaText}</a>
         ${d.ctaText2?`<a href="#" class="btn btn-outline" data-sf-field="ctaText2" style="${d.image?'color:#fff;border-color:rgba(255,255,255,.4)':''}">${d.ctaText2}</a>`:''}
       </div>
       ${d.showStats?`<div style="display:flex;gap:40px;margin-top:52px;padding-top:40px;border-top:1px solid ${d.image?'rgba(255,255,255,.15)':dark?'#2a2a2a':'#e5e7eb'};flex-wrap:wrap">
@@ -170,16 +223,24 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     </div>
   </div>
 </section>`
+    }
 
     case 'stats': return `
 <section style="padding:40px 0;background:var(--primary)">
   <div class="container">
     <div class="sf-grid-4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center">
-      ${['1','2','3','4'].map(n=>`
-      <div data-aos="fade-up" data-aos-delay="${(parseInt(n)-1)*100}">
-        <div data-sf-field="stat${n}val" style="font-size:clamp(28px,4vw,42px);font-weight:900;color:#fff">${d[`stat${n}val`]||''}</div>
-        <div data-sf-field="stat${n}label" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${d[`stat${n}label`]||''}</div>
-      </div>`).join('')}
+      ${['1','2','3','4'].map(n=>{
+        const raw = String(d[`stat${n}val`] || '')
+        // If the value contains a number, animate it counter-up.
+        const numMatch = raw.match(/^(\D*)(\d+(?:[.,]\d+)?)(.*)$/)
+        const counterAttrs = numMatch
+          ? `data-counter="${numMatch[2].replace(/[.,]/g,'')}" data-prefix="${numMatch[1]}" data-suffix="${numMatch[3]}"`
+          : ''
+        return `<div data-aos="fade-up" data-aos-delay="${(parseInt(n)-1)*100}">
+          <div data-sf-field="stat${n}val" ${counterAttrs} style="font-size:clamp(28px,4vw,42px);font-weight:900;color:#fff">${raw}</div>
+          <div data-sf-field="stat${n}label" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${d[`stat${n}label`]||''}</div>
+        </div>`
+      }).join('')}
     </div>
   </div>
 </section>`
@@ -242,7 +303,37 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
   </div>
 </section>`
 
-    case 'testimonials': return `
+    case 'testimonials': {
+      const variant = d.variant || 'cards'
+      const items = d.items || []
+      const card = (t: any, i: number) => `
+        <div ${variant==='cards'?`data-aos="fade-up" data-aos-delay="${i*100}"`:''} class="sf-card" style="${variant==='marquee'?'flex-shrink:0;width:380px;':''}background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:28px">
+          ${ratingStars(5)}
+          <p style="font-size:15px;line-height:1.75;color:${dark?'#ccc':'#444'};margin-bottom:20px;font-style:italic">"${t.quote}"</p>
+          <div style="display:flex;align-items:center;gap:12px">
+            ${t.avatar ? `<img src="${t.avatar}" alt="${t.name}" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover">` : `<div style="width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--primary) 15%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${(t.name||'?').slice(0,1).toUpperCase()}</div>`}
+            <div><div style="font-weight:700;font-size:14px">${t.name}</div><div style="font-size:12px;color:${dark?'#777':'#999'}">${t.role}</div></div>
+          </div>
+        </div>`
+
+      if (variant === 'marquee' && items.length >= 3) {
+        // Duplicate the items so the loop is seamless.
+        const all = [...items, ...items].map(card).join('')
+        return `
+<section style="padding:80px 0;background:${dark?'#111':'#f9fafb'};overflow:hidden">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px" data-aos="fade-up">
+      <div class="section-label">Testimonials</div>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+    </div>
+  </div>
+  <div class="sf-marquee" style="overflow:hidden;mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)">
+    <div class="sf-marquee-track">${all}</div>
+  </div>
+</section>`
+      }
+
+      return `
 <section style="padding:80px 0;background:${dark?'#111':'#f9fafb'}">
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
@@ -250,18 +341,11 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
       <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
-      ${(d.items||[]).map((t: any, i: number) => `
-      <div data-aos="fade-up" data-aos-delay="${i*100}" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:28px">
-        ${ratingStars(5)}
-        <p style="font-size:15px;line-height:1.75;color:${dark?'#ccc':'#444'};margin-bottom:20px;font-style:italic">"${t.quote}"</p>
-        <div style="display:flex;align-items:center;gap:12px">
-          ${t.avatar ? `<img src="${t.avatar}" alt="${t.name}" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover">` : `<div style="width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--primary) 15%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${(t.name||'?').slice(0,1).toUpperCase()}</div>`}
-          <div><div style="font-weight:700;font-size:14px">${t.name}</div><div style="font-size:12px;color:${dark?'#777':'#999'}">${t.role}</div></div>
-        </div>
-      </div>`).join('')}
+      ${items.map(card).join('')}
     </div>
   </div>
 </section>`
+    }
 
     case 'gallery': return `
 <section style="padding:80px 0">
@@ -538,7 +622,44 @@ function aosScript(): string {
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    if (typeof AOS !== 'undefined') AOS.init({ duration: 800, once: true, offset: 60 });
+    if (typeof AOS !== 'undefined') AOS.init({ duration: 800, once: true, offset: 60, easing:'ease-out-cubic' });
+    // Counter-up for stat numbers (any element with data-counter="<final number>").
+    document.querySelectorAll('[data-counter]').forEach(function(el){
+      var target = parseInt(el.getAttribute('data-counter'),10);
+      var suffix = el.getAttribute('data-suffix') || '';
+      var prefix = el.getAttribute('data-prefix') || '';
+      if (isNaN(target)) return;
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if (!e.isIntersecting) return;
+          io.unobserve(el);
+          var start = 0, dur = 1400, t0 = performance.now();
+          function tick(t){ var p = Math.min(1,(t-t0)/dur); var v = Math.round(target*(p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2)); el.textContent = prefix + v.toLocaleString() + suffix; if(p<1) requestAnimationFrame(tick) }
+          requestAnimationFrame(tick);
+        });
+      });
+      io.observe(el);
+    });
+    // Hero parallax for sections marked with [data-parallax].
+    var parallax = document.querySelectorAll('[data-parallax]');
+    if (parallax.length) {
+      var onScroll = function(){
+        var y = window.scrollY;
+        parallax.forEach(function(el){
+          var rate = parseFloat(el.getAttribute('data-parallax')) || .35;
+          el.style.backgroundPosition = 'center calc(50% + ' + (y*rate) + 'px)';
+        });
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }
+    // Liquid hover effect for primary buttons.
+    document.querySelectorAll('.sf-btn-primary').forEach(function(btn){
+      btn.addEventListener('mousemove', function(e){
+        var r = btn.getBoundingClientRect();
+        btn.style.setProperty('--mx', ((e.clientX-r.left)/r.width*100)+'%');
+        btn.style.setProperty('--my', ((e.clientY-r.top)/r.height*100)+'%');
+      });
+    });
   });
 </script>`
 }

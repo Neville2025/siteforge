@@ -10,6 +10,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       { key:'ctaUrl', label:'Button URL', type:'url', placeholder:'#contact' },
       { key:'ctaText2', label:'Secondary Button', type:'text', placeholder:'Learn More' },
       { key:'image', label:'Background Image', type:'image' },
+      { key:'variant', label:'Layout', type:'select', options:['default','split','centered'], hint:'Default: full-bleed image. Split: image right, text left. Centered: text-only with animated gradient.' },
       { key:'showStats', label:'Show inline stats (use only if no Stats Bar section)', type:'boolean', hint:'Toggle off if you have a separate Stats Bar section to avoid duplicate numbers.' },
       { key:'stat1val', label:'Stat 1 Value', type:'text', placeholder:'200+' },
       { key:'stat1label', label:'Stat 1 Label', type:'text', placeholder:'Clients' },
@@ -110,6 +111,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
     type: 'testimonials', name: 'Testimonials', icon: '💬', description: 'Client reviews and social proof',
     fields: [
       { key:'heading', label:'Heading', type:'text', placeholder:'What Our Clients Say' },
+      { key:'variant', label:'Layout', type:'select', options:['cards','marquee'], hint:'Cards: 3-column grid. Marquee: infinite horizontal scroll (needs 3+ testimonials).' },
       { key:'items', label:'Testimonials', type:'list' },
     ],
     defaultData: {

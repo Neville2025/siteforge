@@ -60,9 +60,9 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       heading: 'What We Offer',
       subheading: 'Professional services tailored to deliver real results for your business.',
       items: [
-        { icon:'⚡', title:'Service One', desc:'Professional service that helps your clients achieve their goals faster.' },
-        { icon:'🎯', title:'Service Two', desc:'Targeted approach delivering measurable results every time.' },
-        { icon:'🔒', title:'Service Three', desc:'Reliable, secure solutions you can trust for the long term.' },
+        { icon:'zap', title:'Service One', desc:'Professional service that helps your clients achieve their goals faster.' },
+        { icon:'target', title:'Service Two', desc:'Targeted approach delivering measurable results every time.' },
+        { icon:'shield', title:'Service Three', desc:'Reliable, secure solutions you can trust for the long term.' },
       ]
     }
   },
@@ -78,10 +78,10 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       heading: 'Why Choose Us',
       subheading: 'We combine expertise, technology, and personal service to deliver outcomes that matter.',
       items: [
-        { icon:'✓', title:'Expert Team', desc:'Years of experience across multiple industries.' },
-        { icon:'✓', title:'Fast Turnaround', desc:'We work efficiently without compromising quality.' },
-        { icon:'✓', title:'Full Support', desc:'Dedicated support before, during, and after.' },
-        { icon:'✓', title:'Proven Results', desc:'Track record of delivering measurable outcomes.' },
+        { icon:'check', title:'Expert Team', desc:'Years of experience across multiple industries.' },
+        { icon:'bolt', title:'Fast Turnaround', desc:'We work efficiently without compromising quality.' },
+        { icon:'thumbs-up', title:'Full Support', desc:'Dedicated support before, during, and after.' },
+        { icon:'award', title:'Proven Results', desc:'Track record of delivering measurable outcomes.' },
       ]
     }
   },

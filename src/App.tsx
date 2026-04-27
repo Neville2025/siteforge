@@ -8,6 +8,7 @@ import { exportSite, renderPage } from './renderer'
 import { IMAGES, IMAGE_CATEGORIES, searchImages, type LibraryImage } from './imageLibrary'
 import { COUNTRY_LIST, COUNTRIES, DEFAULT_COUNTRY, type CountryCode } from './locale/profiles'
 import { TEMPLATES, type SiteTemplate } from './templates'
+import { listSavedTemplates, saveTemplate, deleteSavedTemplate, previewFor, type SavedTemplate } from './savedTemplates'
 import { v4 as uuid } from 'uuid'
 import type { SectionType, Theme } from './types'
 import './index.css'
@@ -847,7 +848,10 @@ function DeployModal({ B, onClose, siteName }: { B: typeof DARK; onClose: () => 
 }
 
 // ── Templates Browser Modal ───────────────────────────────────
-function TemplatesModal({ B, onClose, onPick }: { B: typeof DARK; onClose: () => void; onPick: (t: SiteTemplate) => void }) {
+function TemplatesModal({ B, onClose, onPick, onPickSaved }: { B: typeof DARK; onClose: () => void; onPick: (t: SiteTemplate) => void; onPickSaved: (t: SavedTemplate) => void }) {
+  const [saved, setSaved] = useState<SavedTemplate[]>(listSavedTemplates())
+  const refresh = () => setSaved(listSavedTemplates())
+
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
       style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
@@ -857,10 +861,42 @@ function TemplatesModal({ B, onClose, onPick }: { B: typeof DARK; onClose: () =>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
           <div>
             <div style={{ fontSize:20, fontWeight:900 }}>📚 Templates</div>
-            <div style={{ fontSize:12, color:B.muted, marginTop:4 }}>Pre-built sites for common South African businesses. Pick one, then customise everything.</div>
+            <div style={{ fontSize:12, color:B.muted, marginTop:4 }}>Pre-built sites + your saved patterns. Pick one, then customise everything.</div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:22 }}>✕</button>
         </div>
+
+        {saved.length > 0 && (
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:11, fontWeight:800, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Your saved templates ({saved.length})</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px,1fr))', gap:14 }}>
+              {saved.map(t => (
+                <div key={t.id} style={{ position:'relative', cursor:'pointer', borderRadius:12, overflow:'hidden', border:`1px solid ${B.border}`, background:B.card }}
+                  onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.borderColor = B.green}
+                  onMouseLeave={e=>(e.currentTarget as HTMLDivElement).style.borderColor = B.border}>
+                  <button onClick={(e)=>{ e.stopPropagation(); if (confirm(`Delete saved template "${t.name}"?`)) { deleteSavedTemplate(t.id); refresh() } }}
+                    title="Delete"
+                    style={{ position:'absolute', top:8, right:8, zIndex:2, background:'rgba(0,0,0,.7)', color:'#fff', border:'none', borderRadius:'50%', width:24, height:24, fontSize:12, cursor:'pointer' }}>✕</button>
+                  <div onClick={()=>onPickSaved(t)}>
+                    {t.preview && <div style={{ aspectRatio:'4/3', overflow:'hidden' }}>
+                      <img src={t.preview} alt={t.name} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                    </div>}
+                    <div style={{ padding:'12px 14px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                        <div style={{ fontSize:13, fontWeight:800 }}>{t.name}</div>
+                        <span style={{ fontSize:9, padding:'2px 6px', borderRadius:999, background:`${B.green}22`, color:B.green, fontWeight:800 }}>{t.source === 'analyzed' ? 'Analyzed' : 'Saved'}</span>
+                      </div>
+                      <div style={{ fontSize:11, color:B.muted, lineHeight:1.5, minHeight:30 }}>{t.description || 'Saved by you'}</div>
+                      <div style={{ fontSize:11, color:B.green, fontWeight:800, marginTop:8 }}>Use this template →</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ fontSize:11, fontWeight:800, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Built-in templates</div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px,1fr))', gap:14 }}>
           {TEMPLATES.map(t => (
             <motion.div key={t.id} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}
@@ -1119,6 +1155,25 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
       const avatarColors = ['2563eb','16a34a','ea580c','dc2626','9333ea']
       const avatar = (n: string, i: number) => `https://ui-avatars.com/api/?name=${encodeURIComponent(n||'User')}&size=200&background=${avatarColors[i%5]}&color=fff`
 
+      // When the AI returned empty arrays for sections that the source did
+      // not have, we substitute a single editable placeholder row so the user
+      // sees "edit this to add your real X" instead of an empty section.
+      const PLACEHOLDER_TESTIMONIAL = { name:'[Add a real client name]', role:'[Their company or role]', quote:'Edit this to add a real testimonial from a real customer. Click to edit. Fake testimonials damage trust and may breach consumer-protection law.' }
+      const PLACEHOLDER_TEAM = { name:'[Add a team member name]', role:'[Their role]', bio:'Edit this to add a short bio of a real team member. Click to edit.' }
+      const PLACEHOLDER_PRICING = { name:'Plan name', price:'Edit price', period:'/month', features:['Edit these features', 'Add what is included', 'Replace with real list'], cta:'Get a Quote', highlighted: false }
+      const PLACEHOLDER_FAQ = { q:'Edit this question', a:'Edit this answer to address something your real customers actually ask. Click on it to start editing.' }
+      const PLACEHOLDER_SERVICE = { icon:'zap', title:'Edit this service', desc:'Click to edit. Add a service your business actually offers.' }
+
+      const testimonialsArr = (content.testimonials && content.testimonials.length > 0)
+        ? content.testimonials.map((t:any,i:number)=>({ ...t, avatar: avatar(t.name, i) }))
+        : [{ ...PLACEHOLDER_TESTIMONIAL, avatar: avatar('You', 0) }]
+      const teamArr = (content.team && content.team.length > 0)
+        ? content.team.map((m:any,i:number)=>({ ...m, image: avatar(m.name, i) }))
+        : [{ ...PLACEHOLDER_TEAM, image: avatar('You', 0) }]
+      const pricingArr = (content.pricing && content.pricing.length > 0) ? content.pricing : [PLACEHOLDER_PRICING]
+      const faqArr = (content.faq && content.faq.length > 0) ? content.faq : [PLACEHOLDER_FAQ]
+      const servicesArr = (content.services && content.services.length > 0) ? content.services : [PLACEHOLDER_SERVICE]
+
       const site = {
         id: 'gen', name: businessName, tagline: content.tagline || auditData?.tagline || '', logo: '',
         country,
@@ -1136,21 +1191,21 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
           { name:'Home', slug:'/', sections: [
             { type:'hero', data: { headline: content.heroHeadline, subtext: content.heroSubtext, ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'Learn More', image: content.heroImage, showStats: true } },
             { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
-            { type:'services', data: { heading:'What We Offer', subheading:'Professional services tailored to your needs.', items: content.services||[] } },
-            { type:'features', data: { heading:'Why Choose Us', subheading:'What makes us different.', items: (content.features||[]).map((f:any)=>({ icon:'✓', title:f.title, desc:f.desc })) } },
-            { type:'testimonials', data: { heading:'What Clients Say', items: (content.testimonials||[]).map((t:any,i:number)=>({ ...t, avatar: avatar(t.name, i) })) } },
+            { type:'services', data: { heading:'What We Offer', subheading:'Professional services tailored to your needs.', items: servicesArr } },
+            { type:'features', data: { heading:'Why Choose Us', subheading:'What makes us different.', items: (content.features && content.features.length > 0) ? content.features.map((f:any)=>({ icon:f.icon||'check', title:f.title, desc:f.desc })) : [{ icon:'check', title:'Edit to add a feature', desc:'Click to edit. Add a real differentiator.' }] } },
+            { type:'testimonials', data: { heading:'What Clients Say', items: testimonialsArr } },
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Take the next step today. We are here to help.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
           ]},
           { name:'About', slug:'/about', sections: [
             { type:'about', data: { heading: content.aboutHeading||'About Us', subheading: content.aboutSubheading||'Our Story', body: content.aboutBody||'', body2: content.aboutBody2||'', image: content.aboutImage, ctaText:'Get in Touch' } },
-            { type:'team', data: { heading:'Meet the Team', members: (content.team||[]).map((m:any,i:number)=>({ ...m, image: avatar(m.name, i) })) } },
+            { type:'team', data: { heading:'Meet the Team', members: teamArr } },
             { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
           ]},
           { name:'Services', slug:'/services', sections: [
             { type:'hero', data: { headline:`Our ${businessIndustry}`, subtext:'Discover the full range of services we offer.', ctaText:'Get a Quote', ctaUrl:'#contact', ctaText2:'', image:'', showStats: false } },
-            { type:'services', data: { heading:'Services We Offer', subheading:'Comprehensive solutions for your business.', items: content.services||[] } },
-            { type:'pricing', data: { heading:'Pricing Packages', subheading:'Transparent pricing. No hidden fees.', items: content.pricing||[] } },
-            { type:'faq', data: { heading:'Frequently Asked Questions', items: content.faq||[] } },
+            { type:'services', data: { heading:'Services We Offer', subheading:'Comprehensive solutions for your business.', items: servicesArr } },
+            { type:'pricing', data: { heading:'Pricing Packages', subheading:'Transparent pricing. No hidden fees.', taxIncluded:true, items: pricingArr } },
+            { type:'faq', data: { heading:'Frequently Asked Questions', items: faqArr } },
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Contact us today for a free consultation.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
           ]},
           { name:'Contact', slug:'/contact', sections: [
@@ -1164,6 +1219,20 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         ]
       }
       store.loadSite(site as any)
+      // When the build was driven by analysing an existing URL, also save the
+      // resulting design as a reusable template so the user can re-use the
+      // pattern next time.
+      if (mode === 'url' && url.trim()) {
+        try {
+          saveTemplate({
+            name: `${businessName} (analyzed)`,
+            description: `Auto-saved from analyzing ${url.trim()}`,
+            source: 'analyzed',
+            site: JSON.parse(JSON.stringify(site)),
+            preview: previewFor(site as any),
+          })
+        } catch {}
+      }
       onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Build failed')
@@ -1376,6 +1445,14 @@ export default function App() {
     a.click()
   }
 
+  const saveAsTemplate = () => {
+    const name = prompt('Name for this template:', store.site.name)
+    if (!name) return
+    const description = prompt('Short description (optional):', store.site.tagline || '') || ''
+    saveTemplate({ name, description, source:'manual', site: JSON.parse(JSON.stringify(store.site)), preview: previewFor(store.site) })
+    alert(`Saved "${name}" — find it in 📚 Templates → Your saved templates.`)
+  }
+
   const loadProject = (file: File) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -1413,6 +1490,10 @@ export default function App() {
         <button title="Save project as JSON" onClick={saveProject}
           style={{ padding:'0 10px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
           💾 Save
+        </button>
+        <button title="Save current site as a reusable template" onClick={saveAsTemplate}
+          style={{ padding:'0 10px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+          ★ Save as template
         </button>
         <button onClick={()=>{
           if (confirm('Start over? This will reset your current site to the default template. Save your project first if you want to keep it.')) {
@@ -1483,6 +1564,11 @@ export default function App() {
         {showTemplates && <TemplatesModal B={B} onClose={()=>setShowTemplates(false)}
           onPick={(t)=>{
             store.loadSite(t.build())
+            setShowTemplates(false)
+            setShowWelcome(false)
+          }}
+          onPickSaved={(t)=>{
+            store.loadSite(t.site)
             setShowTemplates(false)
             setShowWelcome(false)
           }} />}

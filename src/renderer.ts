@@ -1,6 +1,13 @@
 import type { SiteData, Page, Section, Theme } from './types'
 import { COUNTRIES, DEFAULT_COUNTRY, phoneToTelLink, phoneToWhatsApp, type CountryCode } from './locale/profiles'
 import { generatePrivacyPolicy } from './locale/privacyPolicy'
+import { renderIcon } from './icons'
+
+// 5-pointed SVG star, used for testimonial ratings (replaces ★).
+const STAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
+function ratingStars(count = 5): string {
+  return `<div style="display:inline-flex;gap:2px;color:var(--primary);margin-bottom:12px" aria-label="${count} out of 5 stars">${STAR_SVG.repeat(count)}</div>`
+}
 
 function getProfile(site: SiteData) {
   const code = (site.country as CountryCode) || DEFAULT_COUNTRY
@@ -188,7 +195,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       ${(d.items||[]).map((item: any, i: number) => `
       <div data-aos="fade-up" data-aos-delay="${i*100}" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:32px;transition:transform .2s,box-shadow .2s" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 16px 40px rgba(0,0,0,.1)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
-        <div style="font-size:32px;margin-bottom:16px">${item.icon||'⚡'}</div>
+        <div style="width:48px;height:48px;border-radius:12px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px">${renderIcon(item.icon||'zap', 26)}</div>
         <h3 style="font-size:18px;font-weight:800;margin-bottom:10px">${item.title}</h3>
         <p style="font-size:14px;color:${dark?'#999':'#666'};line-height:1.7">${item.desc}</p>
       </div>`).join('')}
@@ -208,7 +215,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
       <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" data-aos="fade-up" data-aos-delay="100">
         ${(d.items||[]).map((item: any) => `
         <div style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:24px">
-          <div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--primary);font-weight:900;font-size:18px">${item.icon}</div>
+          <div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--primary)">${renderIcon(item.icon||'check', 22)}</div>
           <div style="font-size:15px;font-weight:700;margin-bottom:6px">${item.title}</div>
           <div style="font-size:13px;color:${dark?'#999':'#777'};line-height:1.6">${item.desc}</div>
         </div>`).join('')}
@@ -245,10 +252,10 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
       ${(d.items||[]).map((t: any, i: number) => `
       <div data-aos="fade-up" data-aos-delay="${i*100}" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:28px">
-        <div style="color:var(--primary);font-size:20px;margin-bottom:12px">★★★★★</div>
+        ${ratingStars(5)}
         <p style="font-size:15px;line-height:1.75;color:${dark?'#ccc':'#444'};margin-bottom:20px;font-style:italic">"${t.quote}"</p>
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${t.avatar}" alt="${t.name}" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover">
+          ${t.avatar ? `<img src="${t.avatar}" alt="${t.name}" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover">` : `<div style="width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--primary) 15%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">${(t.name||'?').slice(0,1).toUpperCase()}</div>`}
           <div><div style="font-weight:700;font-size:14px">${t.name}</div><div style="font-size:12px;color:${dark?'#777':'#999'}">${t.role}</div></div>
         </div>
       </div>`).join('')}
@@ -292,7 +299,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
         <div style="font-size:42px;font-weight:900;margin-bottom:4px;color:${p.highlighted?'#fff':'inherit'}">${p.price}</div>
         <div style="font-size:13px;color:${p.highlighted?'rgba(255,255,255,.7)':dark?'#777':'#999'};margin-bottom:6px">${p.period||''}</div>
         ${profile.taxLabel !== 'none' ? `<div style="font-size:11px;color:${p.highlighted?'rgba(255,255,255,.65)':dark?'#666':'#aaa'};margin-bottom:22px;font-weight:600">${d.taxIncluded?`incl. ${profile.taxLabel}`:`excl. ${profile.taxLabel}`}</div>` : `<div style="margin-bottom:22px"></div>`}
-        <div style="margin-bottom:28px">${(p.features||[]).map((f: string)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;font-size:14px;color:${p.highlighted?'rgba(255,255,255,.9)':dark?'#ccc':'#444'}"><span style="color:${p.highlighted?'#fff':'var(--primary)'};font-weight:700;flex-shrink:0">✓</span>${f}</div>`).join('')}</div>
+        <div style="margin-bottom:28px">${(p.features||[]).map((f: string)=>`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:14px;color:${p.highlighted?'rgba(255,255,255,.9)':dark?'#ccc':'#444'}"><span style="color:${p.highlighted?'#fff':'var(--primary)'};flex-shrink:0;line-height:0;margin-top:4px">${renderIcon('check', 16)}</span>${f}</div>`).join('')}</div>
         <a href="#contact" class="btn" style="width:100%;text-align:center;display:block;${p.highlighted?'background:#fff;color:var(--primary)':'background:var(--primary);color:#fff'}">${p.cta}</a>
       </div>`).join('')}
     </div>
@@ -359,10 +366,10 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
         <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
         <p data-sf-field="subtext" style="font-size:16px;color:${dark?'#bbb':'#666'};line-height:1.75;margin-bottom:32px">${d.subtext}</p>
         <div style="display:flex;flex-direction:column;gap:16px">
-          ${d.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📞</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Phone</div><a href="${phoneToTelLink(d.phone, profile)}" style="color:inherit;text-decoration:none"><div data-sf-field="phone" style="font-weight:600">${d.phone}</div></a></div></div>`:''}
-          ${d.email?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📧</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Email</div><a href="mailto:${d.email}" style="color:inherit;text-decoration:none"><div data-sf-field="email" style="font-weight:600">${d.email}</div></a></div></div>`:''}
-          ${d.address?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📍</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Address</div><div data-sf-field="address" style="font-weight:600">${d.address}</div></div></div>`:''}
-          ${d.hours?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🕐</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Hours</div><div data-sf-field="hours" style="font-weight:600">${d.hours}</div></div></div>`:''}
+          ${d.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${renderIcon('phone', 22)}</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Phone</div><a href="${phoneToTelLink(d.phone, profile)}" style="color:inherit;text-decoration:none"><div data-sf-field="phone" style="font-weight:600">${d.phone}</div></a></div></div>`:''}
+          ${d.email?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${renderIcon('mail', 22)}</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Email</div><a href="mailto:${d.email}" style="color:inherit;text-decoration:none"><div data-sf-field="email" style="font-weight:600">${d.email}</div></a></div></div>`:''}
+          ${d.address?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${renderIcon('map-pin', 22)}</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Address</div><div data-sf-field="address" style="font-weight:600">${d.address}</div></div></div>`:''}
+          ${d.hours?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${renderIcon('clock', 22)}</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Hours</div><div data-sf-field="hours" style="font-weight:600">${d.hours}</div></div></div>`:''}
         </div>
       </div>
       <div data-aos="fade-up" data-aos-delay="100" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:36px">

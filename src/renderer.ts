@@ -94,11 +94,12 @@ function css(theme: Theme) {
     .nav-links{display:flex;gap:28px;font-size:14px;color:${theme.style==='dark'?'#888':'#666'}}
     .nav-links a:hover{color:var(--primary)}
     .nav-cta .btn{padding:9px 20px;font-size:13px}
-    .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
-    .hamburger span{width:22px;height:2px;background:currentColor;transition:.3s}
-    .mobile-menu{display:none;position:fixed;top:64px;left:0;right:0;background:${theme.style==='dark'?'#0a0a0a':'#fff'};border-bottom:1px solid ${theme.style==='dark'?'#222':'#eee'};padding:20px 24px;flex-direction:column;gap:16px;z-index:99}
+    .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:8px;background:transparent;border:none;color:inherit}
+    .hamburger span{width:22px;height:2px;background:currentColor;transition:.3s;display:block}
+    .mobile-menu{display:none;position:fixed;top:64px;left:0;right:0;background:${theme.style==='dark'?'#0a0a0a':'#fff'};border-bottom:1px solid ${theme.style==='dark'?'#222':'#eee'};padding:20px 24px;flex-direction:column;gap:16px;z-index:99;box-shadow:0 12px 32px rgba(0,0,0,.18)}
     .mobile-menu.open{display:flex}
-    .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:8px 0;border-bottom:1px solid ${theme.style==='dark'?'#222':'#f0f0f0'}}
+    .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:10px 0;border-bottom:1px solid ${theme.style==='dark'?'#222':'#f0f0f0'};text-decoration:none}
+    .mobile-menu a:last-child{border-bottom:none}
     @media(max-width:768px){.nav-links{display:none}.hamburger{display:flex}}
     /* ── Animations ───────────────────────────────────────────── */
     @keyframes sf-gradient { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
@@ -164,11 +165,12 @@ function nav(site: SiteData, _activePage: Page, _theme: Theme) {
   </a>
   <div class="nav-links">${links}</div>
   <div class="nav-cta"><a href="#contact" class="btn btn-primary">Contact</a></div>
-  <div class="hamburger" onclick="this.nextElementSibling.classList.toggle('open')">
+  <button type="button" class="hamburger" aria-label="Toggle menu" aria-expanded="false"
+    onclick="var m=document.getElementById('sf-mobile-menu');var open=m.classList.toggle('open');this.setAttribute('aria-expanded',open?'true':'false');">
     <span></span><span></span><span></span>
-  </div>
+  </button>
 </nav>
-<div class="mobile-menu">${links}</div>
+<div id="sf-mobile-menu" class="mobile-menu">${links}</div>
 <div style="height:64px"></div>`
 }
 
@@ -812,6 +814,15 @@ function aosScript(): string {
     };
     window.addEventListener('scroll', onScrollNav, { passive: true });
     onScrollNav();
+    // Mobile menu links close the menu when tapped (so anchor scroll happens cleanly)
+    document.querySelectorAll('#sf-mobile-menu a').forEach(function(a){
+      a.addEventListener('click', function(){
+        var m = document.getElementById('sf-mobile-menu');
+        if (m) m.classList.remove('open');
+        var b = document.querySelector('.hamburger');
+        if (b) b.setAttribute('aria-expanded','false');
+      });
+    });
     // Heading shine: trigger once when in view
     var shineEls = document.querySelectorAll('.sf-shine');
     if (shineEls.length) {

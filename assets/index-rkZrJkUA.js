@@ -94,18 +94,39 @@ ${u?u+`
     .mobile-menu.open{display:flex}
     .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:8px 0;border-bottom:1px solid ${e.style===`dark`?`#222`:`#f0f0f0`}}
     @media(max-width:768px){.nav-links{display:none}.hamburger{display:flex}}
-    /* Animations */
+    /* ── Animations ───────────────────────────────────────────── */
     @keyframes sf-gradient { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
     @keyframes sf-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-    @keyframes sf-count-blur { 0%{filter:blur(8px);opacity:0} 100%{filter:blur(0);opacity:1} }
+    @keyframes sf-blob { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-50px) scale(1.1)} 66%{transform:translate(-20px,20px) scale(.9)} }
+    @keyframes sf-fadeup { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:none} }
+    @keyframes sf-shine { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
     .sf-gradient-text { background:linear-gradient(120deg, var(--primary), var(--secondary), var(--accent), var(--primary)); background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation: sf-gradient 8s ease infinite }
     .sf-marquee-track { display:flex; gap:24px; animation: sf-marquee 40s linear infinite; will-change:transform }
     .sf-marquee:hover .sf-marquee-track { animation-play-state:paused }
-    .sf-card { transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s, border-color .15s }
-    .sf-card:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(0,0,0,.12) }
+    /* Cards: lift on hover everywhere */
+    .sf-card { transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s, border-color .15s }
+    .sf-card:hover { transform: translateY(-6px); box-shadow: 0 24px 48px rgba(0,0,0,.12); border-color:color-mix(in srgb,var(--primary) 40%,transparent) }
+    /* Buttons: liquid radial-glow */
     .sf-btn-primary { position:relative; overflow:hidden }
-    .sf-btn-primary::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.25) 0%, transparent 60%); opacity:0; transition:opacity .2s }
+    .sf-btn-primary::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.28) 0%, transparent 60%); opacity:0; transition:opacity .2s }
     .sf-btn-primary:hover::after { opacity:1 }
+    .btn-primary { box-shadow: 0 12px 30px color-mix(in srgb,var(--primary) 35%,transparent); transition: transform .2s, box-shadow .2s }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 50px color-mix(in srgb,var(--primary) 50%,transparent) }
+    /* Image hover zoom inside .sf-image-zoom containers */
+    .sf-image-zoom { overflow:hidden; border-radius:var(--radius) }
+    .sf-image-zoom img { transition: transform .8s cubic-bezier(.2,.8,.2,1) }
+    .sf-image-zoom:hover img { transform: scale(1.06) }
+    /* Decorative animated background blobs (sit behind content) */
+    .sf-blob { position:absolute; border-radius:50%; filter:blur(60px); opacity:.55; pointer-events:none; animation: sf-blob 18s ease-in-out infinite; will-change:transform }
+    /* Scroll progress bar, top of every page */
+    .sf-progress { position:fixed; top:0; left:0; height:3px; background:linear-gradient(90deg,var(--primary),var(--secondary),var(--accent)); transform-origin:0 50%; transform:scaleX(0); z-index:200; transition:transform .12s ease-out }
+    /* Section heading with a subtle shine sweep on first reveal */
+    .sf-shine { position:relative; overflow:hidden }
+    .sf-shine::before { content:''; position:absolute; top:0; left:0; width:60%; height:100%; background:linear-gradient(105deg, transparent 30%, rgba(255,255,255,.18) 50%, transparent 70%); transform:translateX(-100%); pointer-events:none }
+    .sf-shine.in-view::before { animation: sf-shine 1.4s ease-out }
+    /* Sticky nav reveal */
+    nav { transition: background .2s, box-shadow .2s }
+    nav.sf-nav-scrolled { background:${e.style===`dark`?`rgba(8,8,12,.96)`:`rgba(255,255,255,.96)`} !important; box-shadow:0 8px 24px rgba(0,0,0,.06) }
     /* Mobile responsiveness for section grids */
     @media(max-width:900px){
       .sf-grid-2{grid-template-columns:1fr !important;gap:32px !important}
@@ -164,18 +185,22 @@ ${u?u+`
     </div>
   </div>
 </section>`:`
-<section ${r.image?`data-parallax="0.25"`:``} style="min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden;${r.image?`background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url('${r.image}') center/cover`:i?`background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%)`:`background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,#fff) 0%,#fff 60%)`}" data-sf-bgimage="image">
+<section ${r.image?`data-parallax="0.25"`:``} style="min-height:92vh;display:flex;align-items:center;position:relative;overflow:hidden;${r.image?`background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url('${r.image}') center/cover`:i?`background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%)`:`background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 10%,#fff) 0%,#fff 60%)`}" data-sf-bgimage="image">
+  ${r.image?``:`
+    <div class="sf-blob" style="width:520px;height:520px;background:color-mix(in srgb,var(--primary) 25%,transparent);top:-120px;right:-120px;animation-delay:-3s"></div>
+    <div class="sf-blob" style="width:380px;height:380px;background:color-mix(in srgb,var(--secondary) 25%,transparent);bottom:-100px;left:-100px;animation-delay:-9s"></div>
+  `}
   <div class="container" style="position:relative;z-index:1;padding:60px 24px">
-    <div style="max-width:680px" data-aos="fade-up">
+    <div style="max-width:760px" data-aos="fade-up">
       <div class="section-label" style="${r.image?`color:#fff`:``}">✦ ${r.eyebrow||`Welcome`}</div>
-      <h1 data-sf-field="headline" style="font-size:clamp(36px,5.5vw,64px);letter-spacing:-2px;margin-bottom:20px;${r.image?`color:#fff`:``}">${r.headline}</h1>
-      <p data-sf-field="subtext" style="font-size:18px;line-height:1.75;margin-bottom:36px;max-width:520px;${r.image?`color:rgba(255,255,255,.85)`:i?`color:#bbb`:`color:#555`}">${r.subtext}</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a href="${r.ctaUrl||`#contact`}" class="btn btn-primary sf-btn-primary" data-sf-field="ctaText">${r.ctaText}</a>
-        ${r.ctaText2?`<a href="#" class="btn btn-outline" data-sf-field="ctaText2" style="${r.image?`color:#fff;border-color:rgba(255,255,255,.4)`:``}">${r.ctaText2}</a>`:``}
+      <h1 data-sf-field="headline" class="${r.image?``:`sf-gradient-text`}" style="font-size:clamp(40px,6.5vw,80px);letter-spacing:-2.5px;line-height:1.02;margin-bottom:24px;font-weight:900;${r.image?`color:#fff;text-shadow:0 4px 20px rgba(0,0,0,.3)`:``}">${r.headline}</h1>
+      <p data-sf-field="subtext" style="font-size:19px;line-height:1.7;margin-bottom:40px;max-width:560px;${r.image?`color:rgba(255,255,255,.9)`:i?`color:#bbb`:`color:#555`}">${r.subtext}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <a href="${r.ctaUrl||`#contact`}" class="btn btn-primary sf-btn-primary" data-sf-field="ctaText" style="padding:15px 32px;font-size:15px">${r.ctaText}</a>
+        ${r.ctaText2?`<a href="#" class="btn btn-outline" data-sf-field="ctaText2" style="padding:15px 32px;font-size:15px;${r.image?`color:#fff;border-color:rgba(255,255,255,.5)`:``}">${r.ctaText2}</a>`:``}
       </div>
       ${r.showStats?`<div style="display:flex;gap:40px;margin-top:52px;padding-top:40px;border-top:1px solid ${r.image?`rgba(255,255,255,.15)`:i?`#2a2a2a`:`#e5e7eb`};flex-wrap:wrap">
-        ${[1,2,3,4].map(e=>{let t=r[`stat${e}val`],n=r[`stat${e}label`];return!t&&!n?``:`<div><div data-sf-field="stat${e}val" style="font-size:26px;font-weight:900;color:${r.image?`#fff`:`var(--primary)`}">${t||``}</div><div data-sf-field="stat${e}label" style="font-size:11px;${r.image||i?`color:rgba(255,255,255,.6)`:`color:#888`};margin-top:2px">${n||``}</div></div>`}).join(``)}
+        ${[1,2,3,4].map(e=>{let t=r[`stat${e}val`],n=r[`stat${e}label`];if(!t&&!n)return``;let a=String(t).match(/^(\D*)(\d+(?:[.,]\d+)?)(.*)$/);return`<div><div data-sf-field="stat${e}val" ${a?`data-counter="${a[2].replace(/[.,]/g,``)}" data-prefix="${a[1]}" data-suffix="${a[3]}"`:``} style="font-size:32px;font-weight:900;color:${r.image?`#fff`:`var(--primary)`}">${t||``}</div><div data-sf-field="stat${e}label" style="font-size:11px;${r.image||i?`color:rgba(255,255,255,.65)`:`color:#888`};margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${n||``}</div></div>`}).join(``)}
       </div>`:``}
     </div>
   </div>
@@ -194,13 +219,13 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">${r.heading}</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
       <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${r.subheading}</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       ${(r.items||[]).map((e,t)=>`
-      <div data-aos="fade-up" data-aos-delay="${t*100}" style="background:${a};border:${o};border-radius:var(--radius);padding:32px;transition:transform .2s,box-shadow .2s" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 16px 40px rgba(0,0,0,.1)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
-        <div style="width:48px;height:48px;border-radius:12px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px">${dd(e.icon||`zap`,26)}</div>
+      <div class="sf-card" data-aos="fade-up" data-aos-delay="${t*80}" style="background:${a};border:${o};border-radius:var(--radius);padding:32px">
+        <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 18%,transparent),color-mix(in srgb,var(--secondary) 14%,transparent));color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px">${dd(e.icon||`zap`,28)}</div>
         <h3 style="font-size:18px;font-weight:800;margin-bottom:10px">${e.title}</h3>
         <p style="font-size:14px;color:${i?`#999`:`#666`};line-height:1.7">${e.desc}</p>
       </div>`).join(``)}
@@ -212,13 +237,13 @@ ${u?u+`
     <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
       <div data-aos="fade-up">
         <div class="section-label">Why Us</div>
-        <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+        <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
         <p class="section-sub" data-sf-field="subheading">${r.subheading}</p>
       </div>
       <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" data-aos="fade-up" data-aos-delay="100">
         ${(r.items||[]).map(e=>`
-        <div style="background:${a};border:${o};border-radius:var(--radius);padding:24px">
-          <div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--primary)">${dd(e.icon||`check`,22)}</div>
+        <div class="sf-card" style="background:${a};border:${o};border-radius:var(--radius);padding:24px">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 18%,transparent),color-mix(in srgb,var(--accent) 14%,transparent));display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--primary)">${dd(e.icon||`check`,22)}</div>
           <div style="font-size:15px;font-weight:700;margin-bottom:6px">${e.title}</div>
           <div style="font-size:13px;color:${i?`#999`:`#777`};line-height:1.6">${e.desc}</div>
         </div>`).join(``)}
@@ -231,13 +256,13 @@ ${u?u+`
     <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
       <div data-aos="fade-up">
         <div class="section-label">Our Story</div>
-        <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+        <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
         <p data-sf-field="body" style="font-size:16px;color:${i?`#bbb`:`#555`};line-height:1.8;margin-bottom:16px">${r.body}</p>
         <p data-sf-field="body2" style="font-size:16px;color:${i?`#bbb`:`#555`};line-height:1.8;margin-bottom:28px">${r.body2||``}</p>
         ${r.ctaText?`<a href="#contact" class="btn btn-primary" data-sf-field="ctaText">${r.ctaText}</a>`:``}
       </div>
-      <div data-aos="fade-up" data-aos-delay="100">
-        <img src="${gd(r.image,800)}" ${_d(r.image,800)} alt="About us" loading="lazy" data-sf-image="image" style="border-radius:var(--radius);width:100%;height:460px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+      <div class="sf-image-zoom" data-aos="fade-up" data-aos-delay="100" style="box-shadow:0 24px 70px rgba(0,0,0,.18)">
+        <img src="${gd(r.image,800)}" ${_d(r.image,800)} alt="About us" loading="lazy" data-sf-image="image" style="width:100%;height:480px;object-fit:cover;display:block">
       </div>
     </div>
   </div>
@@ -254,7 +279,7 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:40px" data-aos="fade-up">
       <div class="section-label">Testimonials</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
     </div>
   </div>
   <div class="sf-marquee" style="overflow:hidden;mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)">
@@ -265,7 +290,7 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Testimonials</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
       ${t.map(n).join(``)}
@@ -276,14 +301,14 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Gallery</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
       <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${r.subheading}</p>
     </div>
     <div class="sf-grid-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
       ${(r.images||[]).map((e,t)=>`
-      <div data-aos="fade-up" data-aos-delay="${t*50}" style="position:relative;overflow:hidden;border-radius:var(--radius);aspect-ratio:4/3;cursor:pointer" onmouseenter="this.querySelector('div').style.opacity='1'" onmouseleave="this.querySelector('div').style.opacity='0'">
-        <img src="${gd(e.url,600)}" ${_d(e.url,600)} alt="${e.alt}" loading="lazy" style="width:100%;height:100%;object-fit:cover;transition:transform .4s" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform=''">
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;padding:16px;opacity:0;transition:.3s">
+      <div class="sf-image-zoom" data-aos="fade-up" data-aos-delay="${t*50}" style="position:relative;aspect-ratio:4/3;cursor:pointer">
+        <img src="${gd(e.url,600)}" ${_d(e.url,600)} alt="${e.alt}" loading="lazy" style="width:100%;height:100%;object-fit:cover">
+        <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,.7), transparent 50%);display:flex;align-items:flex-end;padding:16px;opacity:0;transition:.3s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
           <span style="color:#fff;font-weight:700;font-size:14px">${e.caption||``}</span>
         </div>
       </div>`).join(``)}
@@ -294,12 +319,12 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Pricing</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
       <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${r.subheading}</p>
     </div>
     <div class="sf-grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       ${(r.items||[]).map((e,t)=>`
-      <div data-aos="fade-up" data-aos-delay="${t*100}" style="background:${e.highlighted?`var(--primary)`:a};border:${e.highlighted?`none`:o};border-radius:var(--radius);padding:36px;position:relative;${e.highlighted?`transform:scale(1.02);box-shadow:0 20px 60px rgba(0,0,0,.2)`:``}">
+      <div class="sf-card" data-aos="fade-up" data-aos-delay="${t*100}" style="background:${e.highlighted?`linear-gradient(135deg,var(--primary),var(--secondary))`:a};border:${e.highlighted?`none`:o};border-radius:var(--radius);padding:36px;position:relative;${e.highlighted?`transform:scale(1.04);box-shadow:0 28px 72px rgba(0,0,0,.22)`:``}">
         ${e.highlighted?`<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--secondary);color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em">Most Popular</div>`:``}
         <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;color:${e.highlighted?`rgba(255,255,255,.8)`:i?`#999`:`#888`}">${e.name}</div>
         <div style="font-size:42px;font-weight:900;margin-bottom:4px;color:${e.highlighted?`#fff`:`inherit`}">${e.price}</div>
@@ -315,7 +340,7 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Our Team</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px">
       ${(r.members||[]).map((e,t)=>`
@@ -332,7 +357,7 @@ ${u?u+`
   <div class="container" style="max-width:760px">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">FAQ</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
     </div>
     <div data-aos="fade-up" data-aos-delay="100">
       ${(r.items||[]).map(e=>`
@@ -361,7 +386,7 @@ ${u?u+`
     <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:60px">
       <div data-aos="fade-up">
         <div class="section-label">Contact</div>
-        <h2 class="section-heading" data-sf-field="heading">${r.heading}</h2>
+        <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading}</h2>
         <p data-sf-field="subtext" style="font-size:16px;color:${i?`#bbb`:`#666`};line-height:1.75;margin-bottom:32px">${r.subtext}</p>
         <div style="display:flex;flex-direction:column;gap:16px">
           ${r.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${dd(`phone`,22)}</div><div><div style="font-size:12px;color:${i?`#888`:`#999`};margin-bottom:2px">Phone</div><a href="${Y(r.phone,s)}" style="color:inherit;text-decoration:none"><div data-sf-field="phone" style="font-weight:600">${r.phone}</div></a></div></div>`:``}
@@ -396,7 +421,7 @@ ${u?u+`
   <div class="container">
     <div style="max-width:560px;margin:0 auto;text-align:center" data-aos="fade-up">
       <div style="font-size:48px;margin-bottom:16px">💬</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading||`Chat with us on WhatsApp`}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading||`Chat with us on WhatsApp`}</h2>
       <p style="font-size:15px;color:${i?`#bbb`:`#444`};line-height:1.7;margin:12px 0 28px" data-sf-field="subtext">${r.subtext||``}</p>
       <a href="${n}" target="_blank" rel="noopener" class="btn" style="background:#25D366;color:#fff;padding:14px 32px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.821 11.821 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.687-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.512 5.26l-.999 3.648 3.976-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
@@ -409,7 +434,7 @@ ${u?u+`
   <div class="container" style="max-width:760px">
     <div data-aos="fade-up">
       <div class="section-label">Payment</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading||`Banking Details`}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading||`Banking Details`}</h2>
       <p style="font-size:15px;color:${i?`#bbb`:`#555`};line-height:1.7;margin-bottom:28px" data-sf-field="subtext">${r.subtext||``}</p>
     </div>
     <div data-aos="fade-up" data-aos-delay="100" style="background:${a};border:${o};border-radius:var(--radius);padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:18px" class="sf-grid-2">
@@ -439,7 +464,7 @@ ${u?u+`
   <div class="container">
     <div style="text-align:center;margin-bottom:32px" data-aos="fade-up">
       <div class="section-label">Location</div>
-      <h2 class="section-heading" data-sf-field="heading">${r.heading||`Find Us`}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading||`Find Us`}</h2>
       ${r.subtext?`<p class="section-sub" data-sf-field="subtext" style="margin:0 auto">${r.subtext}</p>`:``}
     </div>
     ${e?`<div data-aos="fade-up" data-aos-delay="100" style="border-radius:var(--radius);overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.1)">
@@ -450,7 +475,7 @@ ${u?u+`
 <section style="padding:80px 0">
   <div class="container" style="max-width:560px;text-align:center">
     <div data-aos="fade-up">
-      <h2 class="section-heading" data-sf-field="heading">${r.heading||`Stay in the loop`}</h2>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${r.heading||`Stay in the loop`}</h2>
       <p class="section-sub" data-sf-field="subtext" style="margin:8px auto 28px">${r.subtext||``}</p>
       <form action="${e}" method="POST" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
         ${r.provider===`web3forms`&&r.endpoint?`<input type="hidden" name="access_key" value="${r.endpoint}">`:``}
@@ -520,6 +545,31 @@ ${u?u+`
         btn.style.setProperty('--my', ((e.clientY-r.top)/r.height*100)+'%');
       });
     });
+    // Scroll progress bar
+    var bar = document.createElement('div');
+    bar.className = 'sf-progress';
+    document.body.appendChild(bar);
+    // Sticky nav reveal: add .sf-nav-scrolled when user scrolls past 40px
+    var navEl = document.querySelector('nav');
+    var onScrollNav = function(){
+      var max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
+      var p = window.scrollY / max;
+      bar.style.transform = 'scaleX(' + Math.min(1, p) + ')';
+      if (navEl) {
+        if (window.scrollY > 40) navEl.classList.add('sf-nav-scrolled');
+        else navEl.classList.remove('sf-nav-scrolled');
+      }
+    };
+    window.addEventListener('scroll', onScrollNav, { passive: true });
+    onScrollNav();
+    // Heading shine: trigger once when in view
+    var shineEls = document.querySelectorAll('.sf-shine');
+    if (shineEls.length) {
+      var sIO = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){ if (e.isIntersecting) { e.target.classList.add('in-view'); sIO.unobserve(e.target) } });
+      });
+      shineEls.forEach(function(el){ sIO.observe(el) });
+    }
   });
 <\/script>`}function wd(e,t){if(t.slug!==`/`)return``;let n=md(e),r=e.pages.flatMap(e=>e.sections).find(e=>e.type===`contact`)?.data,i={"@context":`https://schema.org`,"@type":`LocalBusiness`,name:e.name,description:e.tagline,url:``,address:{"@type":`PostalAddress`,addressCountry:n.code,streetAddress:r?.address||``},priceRange:`$$`};return r?.phone&&(i.telephone=Y(r.phone,n).replace(`tel:`,``)),r?.email&&(i.email=r.email),r?.hours&&(i.openingHours=r.hours),`<script type="application/ld+json">${JSON.stringify(i)}<\/script>`}function Td(e,t){let n=e.tagline||``,r=`${t.name} — ${e.name}`,i=e.pages.flatMap(e=>e.sections).find(e=>e.type===`hero`)?.data?.image||``;return`
   <meta name="description" content="${hd(n)}">

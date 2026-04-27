@@ -273,7 +273,57 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
   </div>
 </section>`
 
-    case 'services': return `
+    case 'services': {
+      const variant = d.variant || 'grid'
+      const items = d.items || []
+
+      if (variant === 'bento' && items.length >= 3) {
+        // Bento layout: first item gets 2x width and a richer visual treatment.
+        // Subsequent items in a regular grid alongside / below.
+        return `
+<section style="padding:80px 0;background:${dark?'#111':'#f9fafb'}">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
+      <div class="section-label">${d.heading}</div>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${d.heading}</h2>
+      <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
+    </div>
+    <div class="sf-grid-2" style="display:grid;grid-template-columns:1.6fr 1fr;gap:18px">
+      <div class="sf-card" data-aos="fade-right" style="background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 14%,${cardBg}),${cardBg});border:${cardBorder};border-radius:calc(var(--radius) + 6px);padding:48px;display:flex;flex-direction:column;justify-content:flex-end;min-height:340px;position:relative;overflow:hidden">
+        <div class="sf-blob" style="width:280px;height:280px;background:color-mix(in srgb,var(--primary) 30%,transparent);top:-80px;right:-60px;opacity:.4"></div>
+        <div style="position:relative;z-index:1">
+          <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:24px">${renderIcon(items[0].icon||'zap', 34)}</div>
+          <h3 style="font-size:28px;font-weight:900;margin-bottom:12px;letter-spacing:-1px">${items[0].title}</h3>
+          <p style="font-size:16px;color:${dark?'#bbb':'#555'};line-height:1.7;max-width:480px">${items[0].desc}</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-rows:repeat(${Math.min(2, items.length-1)}, 1fr);gap:18px">
+        ${items.slice(1, 3).map((item: any, i: number) => `
+        <div class="sf-card" data-aos="fade-left" data-aos-delay="${(i+1)*80}" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:24px;display:flex;gap:16px;align-items:flex-start">
+          <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 18%,transparent),color-mix(in srgb,var(--secondary) 14%,transparent));color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${renderIcon(item.icon||'zap', 22)}</div>
+          <div>
+            <h3 style="font-size:16px;font-weight:800;margin-bottom:6px">${item.title}</h3>
+            <p style="font-size:13px;color:${dark?'#999':'#666'};line-height:1.65">${item.desc}</p>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    ${items.length > 3 ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:18px">
+      ${items.slice(3).map((item: any, i: number) => `
+      <div class="sf-card" data-aos="fade-up" data-aos-delay="${i*60}" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:24px;display:flex;gap:14px;align-items:flex-start">
+        <div style="width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">${renderIcon(item.icon||'zap', 22)}</div>
+        <div>
+          <h3 style="font-size:15px;font-weight:800;margin-bottom:4px">${item.title}</h3>
+          <p style="font-size:13px;color:${dark?'#999':'#666'};line-height:1.6">${item.desc}</p>
+        </div>
+      </div>`).join('')}
+    </div>` : ''}
+  </div>
+</section>`
+      }
+
+      // default 'grid'
+      return `
 <section style="padding:80px 0;background:${dark?'#111':'#f9fafb'}">
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
@@ -282,7 +332,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
       <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
-      ${(d.items||[]).map((item: any, i: number) => `
+      ${items.map((item: any, i: number) => `
       <div class="sf-card" data-aos="fade-up" data-aos-delay="${i*80}" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:32px">
         <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 18%,transparent),color-mix(in srgb,var(--secondary) 14%,transparent));color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:18px">${renderIcon(item.icon||'zap', 28)}</div>
         <h3 style="font-size:18px;font-weight:800;margin-bottom:10px">${item.title}</h3>
@@ -291,6 +341,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     </div>
   </div>
 </section>`
+    }
 
     case 'features': return `
 <section style="padding:80px 0">
@@ -395,7 +446,62 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
   </div>
 </section>`
 
-    case 'pricing': return `
+    case 'pricing': {
+      const variant = d.variant || 'cards'
+      const items = d.items || []
+      // Comparison variant: side-by-side feature checklist table.
+      if (variant === 'comparison' && items.length >= 2) {
+        // Collect all unique feature strings across plans, dedup by lowercase.
+        const allFeatures: string[] = []
+        const seen = new Set<string>()
+        items.forEach((p: any) => (p.features||[]).forEach((f: string) => {
+          const k = String(f).toLowerCase().trim()
+          if (k && !seen.has(k)) { seen.add(k); allFeatures.push(f) }
+        }))
+        const has = (plan: any, feature: string) => (plan.features||[]).some((f: string) => f.toLowerCase().trim() === feature.toLowerCase().trim())
+        return `
+<section style="padding:80px 0;background:${dark?'#111':'#f9fafb'}">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:48px" data-aos="fade-up">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-heading sf-shine" data-sf-field="heading">${d.heading}</h2>
+      <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
+    </div>
+    <div data-aos="fade-up" data-aos-delay="100" style="overflow-x:auto;border-radius:var(--radius);border:${cardBorder};background:${cardBg}">
+      <table style="width:100%;border-collapse:collapse;min-width:640px">
+        <thead>
+          <tr>
+            <th style="padding:24px 20px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${dark?'#888':'#888'};border-bottom:${cardBorder}">Features</th>
+            ${items.map((p: any) => `<th style="padding:24px 20px;text-align:center;border-bottom:${cardBorder};${p.highlighted?'background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff':''}">
+              <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;${p.highlighted?'':'color:'+(dark?'#888':'#666')}">${p.name}</div>
+              <div style="font-size:30px;font-weight:900;${p.highlighted?'':'color:var(--primary)'}">${p.price}</div>
+              <div style="font-size:12px;${p.highlighted?'color:rgba(255,255,255,.85)':'color:'+(dark?'#888':'#999')};margin-top:2px">${p.period||''}</div>
+              ${profile.taxLabel !== 'none' ? `<div style="font-size:10px;${p.highlighted?'color:rgba(255,255,255,.7)':'color:'+(dark?'#666':'#aaa')};margin-top:6px">${d.taxIncluded?`incl. ${profile.taxLabel}`:`excl. ${profile.taxLabel}`}</div>` : ''}
+            </th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${allFeatures.map((feature: string, idx: number) => `<tr>
+            <td style="padding:14px 20px;font-size:14px;${idx>0?'border-top:1px solid '+(dark?'#1f1f1f':'#eef0f3'):''}">${feature}</td>
+            ${items.map((p: any) => `<td style="padding:14px 20px;text-align:center;${idx>0?'border-top:1px solid '+(dark?'#1f1f1f':'#eef0f3'):''};${p.highlighted?'background:color-mix(in srgb,var(--primary) 8%,transparent)':''}">
+              ${has(p, feature) ? `<span style="display:inline-flex;color:${p.highlighted?'var(--primary)':'var(--primary)'}">${renderIcon('check-circle', 22)}</span>` : `<span style="color:${dark?'#444':'#cbd5e1'};font-size:18px">—</span>`}
+            </td>`).join('')}
+          </tr>`).join('')}
+          <tr>
+            <td style="padding:24px 20px"></td>
+            ${items.map((p: any) => `<td style="padding:24px 20px;text-align:center;${p.highlighted?'background:color-mix(in srgb,var(--primary) 8%,transparent)':''}">
+              <a href="#contact" class="btn btn-primary sf-btn-primary" style="display:inline-block;${p.highlighted?'':'background:'+(dark?'#fff':'#0a0a0a')+';color:'+(dark?'#0a0a0a':'#fff')}">${p.cta}</a>
+            </td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>`
+      }
+
+      // Default 'cards' variant
+      return `
 <section style="padding:80px 0;background:${dark?'#111':'#f9fafb'}">
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
@@ -404,7 +510,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
       <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
     </div>
     <div class="sf-grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
-      ${(d.items||[]).map((p: any, i: number) => `
+      ${items.map((p: any, i: number) => `
       <div class="sf-card" data-aos="fade-up" data-aos-delay="${i*100}" style="background:${p.highlighted?'linear-gradient(135deg,var(--primary),var(--secondary))':cardBg};border:${p.highlighted?'none':cardBorder};border-radius:var(--radius);padding:36px;position:relative;${p.highlighted?'transform:scale(1.04);box-shadow:0 28px 72px rgba(0,0,0,.22)':''}">
         ${p.highlighted?`<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--secondary);color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em">Most Popular</div>`:''}
         <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;color:${p.highlighted?'rgba(255,255,255,.8)':dark?'#999':'#888'}">${p.name}</div>
@@ -417,6 +523,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     </div>
   </div>
 </section>`
+    }
 
     case 'team': return `
 <section style="padding:80px 0">

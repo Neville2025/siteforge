@@ -55,6 +55,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
     fields: [
       { key:'heading', label:'Section Heading', type:'text', placeholder:'What We Offer' },
       { key:'subheading', label:'Section Subheading', type:'text', placeholder:'Tailored solutions for your needs' },
+      { key:'variant', label:'Layout', type:'select', options:['grid','bento'], hint:'Grid: equal cards. Bento: first card hero-sized, others smaller (more editorial).' },
       { key:'items', label:'Services (JSON)', type:'list' },
     ],
     defaultData: {
@@ -150,6 +151,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
     fields: [
       { key:'heading', label:'Heading', type:'text', placeholder:'Our Packages' },
       { key:'subheading', label:'Subheading', type:'text', placeholder:'Choose the plan that suits you' },
+      { key:'variant', label:'Layout', type:'select', options:['cards','comparison'], hint:'Cards: side-by-side plan cards. Comparison: feature checklist table — better when plans share many features.' },
       { key:'taxIncluded', label:'Prices include tax', type:'boolean', hint:'Adds an "incl. VAT/GST" label below each price.' },
       { key:'items', label:'Plans', type:'list' },
     ],

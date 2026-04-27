@@ -251,10 +251,187 @@ const lodge = (): SiteData => ({
   ]
 })
 
+// ── Restaurant template ───────────────────────────────────────
+const restaurant = (): SiteData => ({
+  id:'tpl-restaurant', name:'Maboneng Grill', tagline:'Authentic SA flame-grilled, in the heart of Joburg',
+  logo:'', country:'ZA',
+  widget:{ enabled:true, channel:'whatsapp', number:'+27110000000', message:'Hi Maboneng, I would like to make a reservation.' },
+  theme:{ primaryColor:'#dc2626', secondaryColor:'#0a0a0a', accentColor:'#f59e0b', fontHeading:'Playfair Display', fontBody:'Inter', borderRadius:'small', style:'dark' },
+  pages:[
+    { id:'r-home', name:'Home', slug:'/', sections:[
+      { id:'r1', type:'hero', data:{ headline:'Real fire. Real food. Real Joburg.', subtext:'A South African tshisanyama meets steakhouse in the heart of Maboneng. Open fires, local cuts, craft beer, and the kind of evening you will tell stories about.', ctaText:'Book a Table', ctaUrl:'#contact', ctaText2:'See the Menu', image:u('photo-1414235077428-338989a2e8c0'), showStats:false } },
+      { id:'r2', type:'services', data:{ heading:'On the menu', subheading:'Locally sourced. Hand-cut. Fire-finished.', items:[
+        { icon:'gift', title:'Steaks & ribs', desc:'Karan Beef sirloin, T-bone, prime rib. 350g, 500g, or share. Served on cast-iron.' },
+        { icon:'leaf', title:'Tshisanyama', desc:'Boerewors, lamb chops, beef short rib, pap and chakalaka. Big plate, small price.' },
+        { icon:'sparkles', title:'Sides & salads', desc:'Hand-cut chips, grilled mielie, roast butternut, beetroot salad, garden greens.' },
+        { icon:'heart', title:'Vegetarian & vegan', desc:'Halloumi flame-grill, mushroom potjie, vegetable pap-bake. Real food, no afterthought.' },
+        { icon:'star', title:'Sundowner cocktails', desc:'Smoked old fashioned, Amarula espresso martini, local craft gins. Happy hour 4–6pm Tue-Fri.' },
+        { icon:'home', title:'Sunday lunch', desc:'Slow-roasted beef, chicken, lamb. Three meats, six sides, pudding. R295 per person, kids half price.' },
+      ] } },
+      { id:'r3', type:'gallery', data:{ heading:'Inside Maboneng', subheading:'The fire. The food. The vibe.', images:[
+        { url:u('photo-1414235077428-338989a2e8c0'), alt:'Restaurant interior', caption:'The dining room' },
+        { url:u('photo-1504674900247-0877df9cc836'), alt:'Steak dish', caption:'500g sirloin' },
+        { url:u('photo-1565299624946-b28f40a0ae38'), alt:'Wood-fired oven', caption:'Wood-fired oven' },
+        { url:u('photo-1517248135467-4c7edcad34c4'), alt:'Coffee morning', caption:'Sunday brunch' },
+        { url:u('photo-1546069901-ba9599a7e63c'), alt:'Salad bowl', caption:'Garden bowl' },
+        { url:u('photo-1551218808-94e220e084d2'), alt:'Plated dish', caption:'Chef special' },
+      ]}},
+      { id:'r4', type:'testimonials', data:{ heading:'What our guests say', items:[
+        { name:'Karabo Mthembu', role:'Eat Out, 4★ review', quote:'Worth driving across town for. The fire-grill ribs are a religious experience.', avatar:av('Karabo Mthembu','dc2626') },
+        { name:'Linda Joubert', role:'TripAdvisor', quote:'I have eaten at every steakhouse in Joburg. This is the best, and not even close.', avatar:av('Linda Joubert','0a0a0a') },
+        { name:'Sipho Khumalo', role:'Regular for 3 years', quote:'I take every visiting client here. Nobody has ever been disappointed.', avatar:av('Sipho Khumalo','f59e0b') },
+      ]}},
+      { id:'r5', type:'cta', data:{ heading:'Book your table', subtext:'Friday and Saturday book out a week ahead. Plan now.', ctaText:'Reserve Now', ctaUrl:'#contact', ctaText2:'WhatsApp Us' } },
+    ]},
+    { id:'r-contact', name:'Contact', slug:'/contact', sections:[
+      { id:'r6', type:'contact', data:{ heading:'Visit us', subtext:'Open Tuesday – Sunday. Closed Mondays.', phone:'+27 11 000 0000', email:'reservations@maboneng.co.za', address:'Maboneng Precinct, 286 Fox Street, Johannesburg', hours:'Tue-Thu 17:00–22:30 · Fri-Sat 12:00–23:00 · Sun 11:00–21:00', formKey:'' } },
+      { id:'r7', type:'whatsapp', data:{ heading:'Reserve via WhatsApp', subtext:'Send dates, time, party size. We confirm in minutes.', number:'+27110000000', message:'Hi Maboneng, table for [#] on [date] at [time].', buttonText:'Open WhatsApp' } },
+      { id:'r8', type:'maps', data:{ heading:'Find us', subtext:'5 min walk from Carlton Centre.', address:'Maboneng Precinct, 286 Fox Street, Johannesburg', embedUrl:'' } },
+    ]},
+    { id:'r-priv', name:'Privacy', slug:'/privacy', sections:[
+      { id:'r9', type:'policy', data:{ heading:'Privacy Policy', autoGenerate:true, customBody:'' } },
+    ]},
+  ]
+})
+
+// ── Dentist template ──────────────────────────────────────────
+const dentist = (): SiteData => ({
+  id:'tpl-dentist', name:'Bright Smile Dental', tagline:'Honest, painless dentistry in Sandton',
+  logo:'', country:'ZA',
+  widget:{ enabled:true, channel:'whatsapp', number:'+27110000000', message:'Hi Bright Smile, I would like to book an appointment.' },
+  theme:{ primaryColor:'#0891b2', secondaryColor:'#0e7490', accentColor:'#06b6d4', fontHeading:'Inter', fontBody:'Inter', borderRadius:'medium', style:'light' },
+  pages:[
+    { id:'d-home', name:'Home', slug:'/', sections:[
+      { id:'d1', type:'hero', data:{ headline:'Dentistry without the dread', subtext:'A modern Sandton practice run by Dr Naidoo and Dr Mokoena. Pain-free, well-priced, no upselling. Medical-aid friendly.', ctaText:'Book Online', ctaUrl:'#contact', ctaText2:'Our Services', image:u('photo-1559757148-5c350d0d3c56'), showStats:true, stat1val:'8,000+', stat1label:'Patients', stat2val:'4.9★', stat2label:'Google reviews', stat3val:'12yr', stat3label:'In practice', stat4val:'<7d', stat4label:'New patient wait' } },
+      { id:'d2', type:'services', data:{ heading:'Treatments we offer', subheading:'General, cosmetic, and emergency dentistry under one roof.', items:[
+        { icon:'check-circle', title:'Check-up & cleaning', desc:'Comprehensive 45-min appointment with hygienist scale & polish included.' },
+        { icon:'sparkles', title:'Whitening', desc:'In-chair Zoom whitening (90 min). Take-home kits also available.' },
+        { icon:'shield', title:'Fillings & restorations', desc:'White composite fillings, crowns, bridges, inlays. Same-day on most.' },
+        { icon:'smile', title:'Aligners', desc:'Invisalign Full and Lite — clear, removable, predictable.' },
+        { icon:'heart', title:'Gum health & periodontics', desc:'Deep clean, gum disease treatment, pocket reduction.' },
+        { icon:'clock', title:'Emergency same-day', desc:'Toothache, broken tooth, lost crown — call us, we keep slots open every day.' },
+      ] } },
+      { id:'d3', type:'about', data:{ heading:'A practice built on trust', subheading:'No surprise bills. No upselling.', body:'Dr Priya Naidoo and Dr Andile Mokoena founded Bright Smile because they got tired of seeing patients leave dental visits angry. Every quote is itemised. Every option is explained. You always know what you are paying for, and why.', body2:'We work with all major medical aids — Discovery, Bonitas, Momentum, Bestmed — and submit claims directly. No paperwork stress for you.', image:u('photo-1576091160550-2173dba999ef'), ctaText:'Meet the team' } },
+      { id:'d4', type:'team', data:{ heading:'Your dental team', members:[
+        { name:'Dr Priya Naidoo', role:'Founder, BDS (Wits)', bio:'12 years in private practice. Special interest in cosmetic and Invisalign.', image:av('Priya Naidoo','0891b2') },
+        { name:'Dr Andile Mokoena', role:'Founder, BDS (UWC)', bio:'Specialist interest in restorative and emergency dentistry.', image:av('Andile Mokoena','0e7490') },
+        { name:'Sister Lerato', role:'Hygienist & oral health therapist', bio:'15 years cleaning teeth and teaching kids to brush properly.', image:av('Lerato S','06b6d4') },
+      ]}},
+      { id:'d5', type:'pricing', data:{ heading:'Transparent pricing', subheading:'Cash rates. Medical aid claims submitted directly.', taxIncluded:true, items:[
+        { name:'Consult & check-up', price:'R650', period:'', features:['45-min appointment','X-rays included','Treatment plan written','Hygienist scale & polish'], cta:'Book Now', highlighted:false },
+        { name:'Whitening (Zoom)', price:'R3,200', period:'', features:['In-chair 90-min','Take-home top-up trays','Sensitivity protection','Up to 8 shades whiter'], cta:'Book Now', highlighted:true },
+        { name:'Invisalign Full', price:'From R32,500', period:'', features:['Full digital scan','All aligners included','Refinement tray','12-month plan'], cta:'Get a Quote', highlighted:false },
+      ] } },
+      { id:'d6', type:'faq', data:{ heading:'Common questions', items:[
+        { q:'Do you accept my medical aid?', a:'We work with all major SA medical aids and submit claims for you. Cash rates are also available and clearly shown above.' },
+        { q:'How long is the wait for a new patient?', a:'Usually under 7 days for routine appointments. Emergencies are seen same-day, every day.' },
+        { q:'Are kids welcome?', a:'Yes — we have child-friendly chairs and time slots. First check-up under 12 is free with a parent appointment.' },
+        { q:'What does an emergency cost?', a:'Standard emergency consult R750 cash, plus any treatment. We always quote before doing anything.' },
+      ]}},
+      { id:'d7', type:'cta', data:{ heading:'Book your visit', subtext:'Same-week appointments. Easy parking. No upselling, ever.', ctaText:'Book Online', ctaUrl:'#contact', ctaText2:'Call Us' } },
+    ]},
+    { id:'d-contact', name:'Contact', slug:'/contact', sections:[
+      { id:'d8', type:'contact', data:{ heading:'Make an appointment', subtext:'Online booking is fastest. Or phone us during practice hours.', phone:'+27 11 000 0000', email:'hello@brightsmile.co.za', address:'Sandton Square, Johannesburg', hours:'Mon-Fri 7:30 – 18:00 · Sat 8:00 – 13:00', formKey:'' } },
+      { id:'d9', type:'maps', data:{ heading:'Find us', subtext:'Underground parking validated.', address:'Sandton, Johannesburg', embedUrl:'' } },
+    ]},
+    { id:'d-priv', name:'Privacy', slug:'/privacy', sections:[
+      { id:'d10', type:'policy', data:{ heading:'Privacy Policy', autoGenerate:true, customBody:'' } },
+    ]},
+  ]
+})
+
+// ── Gym / Personal Trainer template ───────────────────────────
+const gym = (): SiteData => ({
+  id:'tpl-gym', name:'Iron + Oak Strength', tagline:'Get strong. Live longer. Joburg.',
+  logo:'', country:'ZA',
+  widget:{ enabled:true, channel:'whatsapp', number:'+27110000000', message:'Hi Iron + Oak, I want to start training.' },
+  theme:{ primaryColor:'#ef4444', secondaryColor:'#0a0a0a', accentColor:'#fbbf24', fontHeading:'Poppins', fontBody:'Inter', borderRadius:'small', style:'dark' },
+  pages:[
+    { id:'g-home', name:'Home', slug:'/', sections:[
+      { id:'g1', type:'hero', data:{ headline:'Train like you mean it.', subtext:'A real strength gym in Rosebank. Not a treadmill farm. Coached barbell programs, small group classes, and serious accountability.', ctaText:'Start a Free Trial', ctaUrl:'#contact', ctaText2:'See Programs', image:u('photo-1534438327276-14e5300c3a48'), showStats:true, stat1val:'180+', stat1label:'Members', stat2val:'92%', stat2label:'12-month retention', stat3val:'6:1', stat3label:'Coach to client', stat4val:'7d', stat4label:'Week-long trial' } },
+      { id:'g2', type:'services', data:{ heading:'Programs', subheading:'Three doors in. All of them coached.', items:[
+        { icon:'bolt', title:'Strength foundations', desc:'12-week barbell beginner program. Squat, bench, deadlift, press. Coached every session.' },
+        { icon:'rocket', title:'Hybrid performance', desc:'Strength + conditioning for athletes and ex-athletes. Run faster, lift heavier, recover smarter.' },
+        { icon:'heart', title:'Strong + healthy 40+', desc:'Joint-friendly strength training designed for adults over 40. Build muscle, build bone, stay sharp.' },
+      ] } },
+      { id:'g3', type:'features', data:{ heading:'What you get', subheading:'Real coaching, no chains, no contracts.', items:[
+        { icon:'users', title:'Real coaches', desc:'Every session has a qualified coach in the room. No "personal trainers" trying to sell you supplements.' },
+        { icon:'target', title:'Honest programming', desc:'Written programs you actually follow. We measure progress, not vanity.' },
+        { icon:'clock', title:'Open 5am – 8pm', desc:'Train before work, after work, on lunch. Members get 24/7 app access for self-led sessions.' },
+        { icon:'thumbs-up', title:'No annual contract', desc:'Month-to-month. Cancel anytime. We earn your subscription every month.' },
+      ] } },
+      { id:'g4', type:'pricing', data:{ heading:'Membership', subheading:'No joining fee. No contract. Cancel anytime.', taxIncluded:true, items:[
+        { name:'Foundations', price:'R1,290', period:'/month', features:['3 coached classes/week','App-based programming','Form check via video','Free re-testing every 8 weeks'], cta:'Start Free Trial', highlighted:false },
+        { name:'Unlimited', price:'R1,790', period:'/month', features:['Unlimited coached classes','Open gym access 5am-8pm','Custom programming','Nutrition consult quarterly','Body comp scan monthly'], cta:'Start Free Trial', highlighted:true },
+        { name:'Personal coaching', price:'R3,490', period:'/month', features:['8 1-on-1 PT sessions','Custom written program','Weekly check-ins','Nutrition + sleep coaching','Includes Unlimited membership'], cta:'Talk to a Coach', highlighted:false },
+      ] } },
+      { id:'g5', type:'testimonials', data:{ heading:'Member results', items:[
+        { name:'Tebogo M.', role:'Member 2 years', quote:'Squat went from 60kg to 140kg. I sleep better. I lost 14kg. The coaching changed my life.', avatar:av('Tebogo M','ef4444') },
+        { name:'Sarah K.', role:'Member 1 year', quote:'I am 47. I was nervous about a strength gym. After two months I was deadlifting more than my husband.', avatar:av('Sarah K','0a0a0a') },
+        { name:'Bongani D.', role:'Member 18 months', quote:'I have been to every gym in Joburg. This is the only one where coaches actually coach. Worth every cent.', avatar:av('Bongani D','fbbf24') },
+      ]}},
+      { id:'g6', type:'cta', data:{ heading:'Free trial week. Decide after.', subtext:'No card needed. No sales pitch. One week of full access. If it is for you, you will know.', ctaText:'Book Trial', ctaUrl:'#contact', ctaText2:'WhatsApp Us' } },
+    ]},
+    { id:'g-contact', name:'Contact', slug:'/contact', sections:[
+      { id:'g7', type:'contact', data:{ heading:'Visit us', subtext:'Walk in for a tour any open hour. No appointment needed.', phone:'+27 11 000 0000', email:'hello@ironandoak.co.za', address:'Rosebank, Johannesburg', hours:'Mon-Fri 5:00 – 20:00 · Sat 7:00 – 13:00 · Sun by appointment', formKey:'' } },
+      { id:'g8', type:'whatsapp', data:{ heading:'Faster on WhatsApp', subtext:'Tell us your goal — we will recommend a program in plain English.', number:'+27110000000', message:'Hi Iron + Oak, my goal is...', buttonText:'Open WhatsApp' } },
+      { id:'g9', type:'maps', data:{ heading:'Find us', subtext:'2 min from the Gautrain.', address:'Rosebank, Johannesburg', embedUrl:'' } },
+    ]},
+    { id:'g-priv', name:'Privacy', slug:'/privacy', sections:[
+      { id:'g10', type:'policy', data:{ heading:'Privacy Policy', autoGenerate:true, customBody:'' } },
+    ]},
+  ]
+})
+
+// ── Mechanic template ─────────────────────────────────────────
+const mechanic = (): SiteData => ({
+  id:'tpl-mechanic', name:'Reliable Auto Workshop', tagline:'Honest mechanics. Fair prices. Same-day on most jobs.',
+  logo:'', country:'ZA',
+  widget:{ enabled:true, channel:'whatsapp', number:'+27110000000', message:'Hi Reliable Auto, I need a quote for...' },
+  theme:{ primaryColor:'#0a0a0a', secondaryColor:'#404040', accentColor:'#facc15', fontHeading:'Montserrat', fontBody:'Inter', borderRadius:'small', style:'light' },
+  pages:[
+    { id:'m-home', name:'Home', slug:'/', sections:[
+      { id:'m1', type:'hero', data:{ headline:'Honest mechanics. Same-day. Joburg North.', subtext:'A family-run workshop in Bryanston that has been keeping cars on the road since 2009. RMI accredited. All major insurance approved. We tell you what is wrong and what is not.', ctaText:'Get a Quote', ctaUrl:'#contact', ctaText2:'Our Services', image:u('photo-1632823469850-2f77dd9c7f93'), showStats:true, stat1val:'14yr', stat1label:'In business', stat2val:'12k+', stat2label:'Cars serviced', stat3val:'4.8★', stat3label:'Google reviews', stat4val:'RMI', stat4label:'Accredited' } },
+      { id:'m2', type:'services', data:{ heading:'What we do', subheading:'Petrol, diesel, hybrid. Most makes. RMI standards.', items:[
+        { icon:'wrench', title:'Major & minor service', desc:'Oil, filter, brakes, suspension check, electronics scan, road test. From R1,890.' },
+        { icon:'shield', title:'Brakes & suspension', desc:'Pads, discs, calipers, shocks, struts. Honest assessment — we will not sell you parts you do not need.' },
+        { icon:'bolt', title:'Diagnostics & electrical', desc:'Live scan, fault tracing, immobiliser, battery, alternator. R450 diagnostic, free if you book the repair.' },
+        { icon:'truck', title:'Tyres & wheel alignment', desc:'4-wheel computer alignment, balancing, tyre fitment from major brands.' },
+        { icon:'cpu', title:'Pre-purchase inspection', desc:'Buying a used car? We do a 60-point inspection and tell you what it is really worth. R890.' },
+        { icon:'check-circle', title:'Roadworthy & insurance', desc:'Roadworthy certificate same day. We work with Outsurance, Discovery, Old Mutual, Santam, Hollard.' },
+      ] } },
+      { id:'m3', type:'features', data:{ heading:'Why choose us', subheading:'Old-school workshop ethics with modern equipment.', items:[
+        { icon:'star', title:'RMI accredited', desc:'Retail Motor Industry standards. Independently inspected. You are protected.' },
+        { icon:'thumbs-up', title:'No upsell, ever', desc:'We give you a written quote. We only do the work you approve. We show you the old parts.' },
+        { icon:'clock', title:'Same-day on most', desc:'Service, brakes, diagnostics — usually back to you before 4pm if dropped before 9am.' },
+        { icon:'briefcase', title:'Insurance approved', desc:'Direct claim submission. We handle the paperwork while you handle your life.' },
+      ] } },
+      { id:'m4', type:'pricing', data:{ heading:'What things cost', subheading:'Indicative cash prices. Quote before any work starts.', taxIncluded:true, items:[
+        { name:'Major service', price:'From R3,290', period:'', features:['Oil + filter','All filters (air, fuel, cabin)','Spark plugs (petrol)','60-point inspection','Brake check','Free diagnostic scan'], cta:'Get a Quote', highlighted:false },
+        { name:'Minor service', price:'From R1,890', period:'', features:['Oil + oil filter','Top-up all fluids','Tyre & brake check','Diagnostic scan','Free road test'], cta:'Get a Quote', highlighted:true },
+        { name:'Diagnostic', price:'R450', period:'', features:['Live OBD scan','Fault code reading','Written report','Free if repair booked'], cta:'Book Slot', highlighted:false },
+      ] } },
+      { id:'m5', type:'cta', data:{ heading:'Drop the car. Get on with your day.', subtext:'WhatsApp us your reg & what is wrong. We will quote before lunch.', ctaText:'WhatsApp a Quote', ctaUrl:'#contact', ctaText2:'Call Us' } },
+    ]},
+    { id:'m-contact', name:'Contact', slug:'/contact', sections:[
+      { id:'m6', type:'contact', data:{ heading:'Find us', subtext:'Drive in for a quote any working day. No appointment needed for diagnostics.', phone:'+27 11 000 0000', email:'service@reliableauto.co.za', address:'Bryanston, Johannesburg', hours:'Mon-Fri 7:30 – 17:30 · Sat 8:00 – 12:30', formKey:'' } },
+      { id:'m7', type:'whatsapp', data:{ heading:'WhatsApp a quote', subtext:'Send make, model, year, and what is happening. We reply with a price.', number:'+27110000000', message:'Hi Reliable Auto, my car is a [year] [make] [model] and the problem is...', buttonText:'Open WhatsApp' } },
+      { id:'m8', type:'banking', data:{ heading:'EFT details', subtext:'For invoice payment. Use your invoice number as reference.', accountName:'Reliable Auto Workshop CC', bank:'FNB', accountNumber:'62000000000', branchCode:'250655', reference:'Use your invoice number', extra:'' } },
+    ]},
+    { id:'m-priv', name:'Privacy', slug:'/privacy', sections:[
+      { id:'m9', type:'policy', data:{ heading:'Privacy Policy', autoGenerate:true, customBody:'' } },
+    ]},
+  ]
+})
+
 export const TEMPLATES: SiteTemplate[] = [
   { id:'safetrak',  name:'SafeTrak',           category:'SaaS',         description:'GPS fleet tracking SaaS — your demo site',                emoji:'📍', preview:u('photo-1551434678-e076c223a692'), build: safetrak },
   { id:'plumber',   name:'Apex Plumbing',      category:'Trades',       description:'24/7 emergency plumber — pricing, services, contact',     emoji:'🚿', preview:u('photo-1581578731548-c64695cc6952'), build: plumber },
   { id:'salon',     name:'Glow Beauty Studio', category:'Beauty',       description:'Hair, nails, skin — gallery, team, testimonials',         emoji:'💄', preview:u('photo-1560066984-138dadb4c035'), build: salon },
   { id:'attorney',  name:'Mahlangu & Associates', category:'Professional', description:'Boutique law firm — practice areas, fixed-fee pricing',  emoji:'⚖', preview:u('photo-1486406146926-c627a92ad1ab'), build: attorney },
   { id:'lodge',     name:'Acacia Lodge',       category:'Hospitality',  description:'Bushveld lodge — gallery, rates, contact',                 emoji:'🏞', preview:u('photo-1564013799919-ab600027ffc6'), build: lodge },
+  { id:'restaurant',name:'Maboneng Grill',     category:'Hospitality',  description:'Tshisanyama / steakhouse — menu, reservations, gallery',   emoji:'🍽', preview:u('photo-1414235077428-338989a2e8c0'), build: restaurant },
+  { id:'dentist',   name:'Bright Smile Dental',category:'Health',       description:'Modern dental practice — services, team, pricing',         emoji:'🦷', preview:u('photo-1559757148-5c350d0d3c56'), build: dentist },
+  { id:'gym',       name:'Iron + Oak Strength',category:'Fitness',      description:'Strength gym + PT studio — programs, membership',          emoji:'💪', preview:u('photo-1534438327276-14e5300c3a48'), build: gym },
+  { id:'mechanic',  name:'Reliable Auto Workshop',category:'Trades',     description:'RMI-accredited mechanic — services, pricing, EFT',         emoji:'🔧', preview:u('photo-1632823469850-2f77dd9c7f93'), build: mechanic },
 ]

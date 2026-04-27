@@ -7,6 +7,7 @@ import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
 import { exportSite, renderPage } from './renderer'
 import { IMAGES, IMAGE_CATEGORIES, searchImages, type LibraryImage } from './imageLibrary'
 import { COUNTRY_LIST, COUNTRIES, DEFAULT_COUNTRY, type CountryCode } from './locale/profiles'
+import { TEMPLATES, type SiteTemplate } from './templates'
 import { v4 as uuid } from 'uuid'
 import type { SectionType, Theme } from './types'
 import './index.css'
@@ -765,7 +766,7 @@ function ImagePickerModal({ B, onClose, onSelect }: { B: typeof DARK; onClose: (
 }
 
 // ── Welcome Modal (first-time experience) ─────────────────────
-function WelcomeModal({ B, onMagicBuild, onClose }: { B: typeof DARK; onMagicBuild: () => void; onClose: () => void }) {
+function WelcomeModal({ B, onMagicBuild, onClose, onTemplates }: { B: typeof DARK; onMagicBuild: () => void; onClose: () => void; onTemplates: () => void }) {
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
       style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.92)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
@@ -781,8 +782,12 @@ function WelcomeModal({ B, onMagicBuild, onClose }: { B: typeof DARK; onMagicBui
             style={{ padding:'14px', borderRadius:10, background:B.green, color:B.bg, fontSize:14, fontWeight:900, border:'none', cursor:'pointer' }}>
             ✨ Generate my website with AI
           </button>
+          <button onClick={onTemplates}
+            style={{ padding:'12px', borderRadius:10, background:'transparent', color:B.text, fontSize:13, fontWeight:700, border:`1px solid ${B.border}`, cursor:'pointer' }}>
+            📚 Pick a template (plumber, salon, attorney, lodge…)
+          </button>
           <button onClick={onClose}
-            style={{ padding:'12px', borderRadius:10, background:'transparent', color:B.muted, fontSize:12, fontWeight:700, border:`1px solid ${B.border}`, cursor:'pointer' }}>
+            style={{ padding:'10px', borderRadius:10, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, border:'none', cursor:'pointer' }}>
             Start with the default template
           </button>
         </div>
@@ -835,6 +840,47 @@ function DeployModal({ B, onClose, siteName }: { B: typeof DARK; onClose: () => 
           <div style={{ fontSize:11, color:B.muted, marginTop:10, lineHeight:1.6 }}>
             Tip: Use <strong style={{ color:B.text }}>↓ Save Project</strong> in the top bar to export a backup file you can re-import on any computer.
           </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ── Templates Browser Modal ───────────────────────────────────
+function TemplatesModal({ B, onClose, onPick }: { B: typeof DARK; onClose: () => void; onPick: (t: SiteTemplate) => void }) {
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      onClick={onClose}>
+      <motion.div initial={{ scale:.95 }} animate={{ scale:1 }} onClick={e=>e.stopPropagation()}
+        style={{ background:B.surface, borderRadius:16, padding:28, width:880, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', border:`1px solid ${B.border}` }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+          <div>
+            <div style={{ fontSize:20, fontWeight:900 }}>📚 Templates</div>
+            <div style={{ fontSize:12, color:B.muted, marginTop:4 }}>Pre-built sites for common South African businesses. Pick one, then customise everything.</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:22 }}>✕</button>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px,1fr))', gap:14 }}>
+          {TEMPLATES.map(t => (
+            <motion.div key={t.id} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}
+              onClick={()=>onPick(t)}
+              style={{ cursor:'pointer', borderRadius:12, overflow:'hidden', border:`1px solid ${B.border}`, background:B.card, transition:'border-color .15s' }}
+              onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.borderColor = B.green}
+              onMouseLeave={e=>(e.currentTarget as HTMLDivElement).style.borderColor = B.border}>
+              {t.preview && <div style={{ aspectRatio:'4/3', overflow:'hidden' }}>
+                <img src={t.preview} alt={t.name} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+              </div>}
+              <div style={{ padding:'12px 14px' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                  <div style={{ fontSize:13, fontWeight:800 }}>{t.emoji} {t.name}</div>
+                  <span style={{ fontSize:9, padding:'2px 6px', borderRadius:999, background:`${B.blue}22`, color:B.blue, fontWeight:800 }}>{t.category}</span>
+                </div>
+                <div style={{ fontSize:11, color:B.muted, lineHeight:1.5, minHeight:30 }}>{t.description}</div>
+                <div style={{ fontSize:11, color:B.green, fontWeight:800, marginTop:8 }}>Use this template →</div>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </motion.div>
     </motion.div>
@@ -1263,6 +1309,7 @@ export default function App() {
   const [showMagic, setShowMagic] = useState(false)
   const [showEditPage, setShowEditPage] = useState(false)
   const [showDeploy, setShowDeploy] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
   const [imagePicker, setImagePicker] = useState<null | { onSelect: (url: string) => void }>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -1375,6 +1422,10 @@ export default function App() {
         }} style={{ padding:'0 10px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
           ↻ Reset
         </button>
+        <button onClick={()=>setShowTemplates(true)}
+          style={{ padding:'0 12px', height:32, borderRadius:7, background:'transparent', border:`1px solid ${B.border}`, color:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          📚 Templates
+        </button>
         <button onClick={()=>setShowMagic(true)}
           style={{ padding:'0 12px', height:32, borderRadius:7, background:`linear-gradient(135deg, ${B.green}, ${B.blue})`, color:'#fff', fontSize:12, fontWeight:800, border:'none', cursor:'pointer' }}>
           ✨ Magic Build
@@ -1427,10 +1478,21 @@ export default function App() {
         {showDeploy && <DeployModal B={B} onClose={()=>setShowDeploy(false)} siteName={store.site.name} />}
       </AnimatePresence>
 
+      {/* TEMPLATES MODAL */}
+      <AnimatePresence>
+        {showTemplates && <TemplatesModal B={B} onClose={()=>setShowTemplates(false)}
+          onPick={(t)=>{
+            store.loadSite(t.build())
+            setShowTemplates(false)
+            setShowWelcome(false)
+          }} />}
+      </AnimatePresence>
+
       {/* WELCOME */}
       <AnimatePresence>
         {showWelcome && <WelcomeModal B={B}
           onMagicBuild={()=>{ setShowWelcome(false); setShowMagic(true) }}
+          onTemplates={()=>{ setShowWelcome(false); setShowTemplates(true) }}
           onClose={()=>setShowWelcome(false)} />}
       </AnimatePresence>
     </div>

@@ -1056,7 +1056,12 @@ export function renderPreviewBundle(site: SiteData, activePageId?: string): stri
   const startIdx = activePageId ? site.pages.findIndex(p => p.id === activePageId) : 0
   const startFile = filenames[startIdx >= 0 ? startIdx : 0]
 
-  const FILES_JSON = JSON.stringify(map)
+  // Escape "</script" and "<!--" so the bundled page HTML (which contains its
+  // own <script>...</script> blocks for AOS, the interactive script, etc.)
+  // does not prematurely terminate the wrapper's <script> tag.
+  const escapeForScript = (s: string) =>
+    s.replace(/<\/(script|style)/gi, '<\\/$1').replace(/<!--/g, '<\\!--')
+  const FILES_JSON = escapeForScript(JSON.stringify(map))
   const START_JSON = JSON.stringify(startFile)
 
   return `<!DOCTYPE html>

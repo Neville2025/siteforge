@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import JSZip from 'jszip'
-import { useStore, getActivePage, getActiveSection } from './store'
+import { useStore, getActivePage, getActiveSection, undo, redo } from './store'
 import { SECTION_DEFS, SECTION_GROUPS } from './sections'
 import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
 import { exportSite, renderPage } from './renderer'
@@ -44,6 +44,8 @@ function SiteCanvas({ B, onMagicEdit, openImagePicker }: { B: typeof DARK; onMag
   const store = useStore()
   const page = getActivePage(store)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [device, setDevice] = useState<'desktop'|'tablet'|'mobile'>('desktop')
+  const widths: Record<typeof device, string> = { desktop: '100%', tablet: '768px', mobile: '390px' }
 
   // Listen for clicks/edits from inside the iframe
   useEffect(() => {
@@ -85,7 +87,14 @@ function SiteCanvas({ B, onMagicEdit, openImagePicker }: { B: typeof DARK; onMag
         <div style={{ fontSize:11, color:B.muted }}>
           <strong style={{ color:B.text }}>{page.name}</strong>
         </div>
-        <div style={{ display:'flex', gap:6 }}>
+        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+          {(['desktop','tablet','mobile'] as const).map(d => (
+            <button key={d} onClick={()=>setDevice(d)} title={d}
+              style={{ width:30, height:26, borderRadius:6, border:`1px solid ${device===d?B.green:B.border}`, background:device===d?`${B.green}20`:'transparent', color:device===d?B.green:B.muted, fontSize:13, cursor:'pointer' }}>
+              {d==='desktop'?'🖥':d==='tablet'?'📱':'📱'}
+            </button>
+          ))}
+          <div style={{ width:8 }} />
           <button onClick={onMagicEdit}
             style={{ fontSize:11, padding:'5px 12px', borderRadius:7, background:B.green, border:'none', color:B.bg, fontWeight:800, cursor:'pointer' }}>
             ✨ Magic Edit Page
@@ -96,14 +105,16 @@ function SiteCanvas({ B, onMagicEdit, openImagePicker }: { B: typeof DARK; onMag
           </button>
         </div>
       </div>
-      <iframe
-        ref={iframeRef}
-        key={page.id + JSON.stringify(store.site.theme) + page.sections.length}
-        srcDoc={html}
-        style={{ flex:1, border:'none', width:'100%' }}
-        title="Preview"
-        sandbox="allow-scripts allow-same-origin"
-      />
+      <div style={{ flex:1, display:'flex', justifyContent:'center', overflow:'auto', background:device==='desktop'?'transparent':'#222', padding:device==='desktop'?0:'20px 12px' }}>
+        <iframe
+          ref={iframeRef}
+          key={page.id + JSON.stringify(store.site.theme) + page.sections.length}
+          srcDoc={html}
+          style={{ flex:device==='desktop'?1:'none', border:device==='desktop'?'none':`1px solid ${B.border}`, borderRadius:device==='desktop'?0:14, width:widths[device], maxWidth:'100%', height:'100%', background:'#fff', boxShadow:device==='desktop'?'none':'0 12px 40px rgba(0,0,0,.3)' }}
+          title="Preview"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
     </div>
   )
 }
@@ -542,8 +553,10 @@ type Suggestion = {
 function SuggestPanel({ B }: { B: typeof DARK }) {
   const store = useStore()
   const [loading, setLoading] = useState(false)
+  const [auditing, setAuditing] = useState(false)
   const [error, setError] = useState('')
   const [items, setItems] = useState<Suggestion[]>([])
+  const [audit, setAudit] = useState<any>(null)
 
   const refresh = async () => {
     setLoading(true); setError('')
@@ -559,6 +572,22 @@ function SuggestPanel({ B }: { B: typeof DARK }) {
       setError(err instanceof Error ? err.message : 'Failed')
     }
     setLoading(false)
+  }
+
+  const runAudit = async () => {
+    setAuditing(true); setError('')
+    try {
+      const res = await fetch('/api/audit', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ site: store.site })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to audit')
+      setAudit(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed')
+    }
+    setAuditing(false)
   }
 
   const apply = (s: Suggestion) => {
@@ -581,20 +610,68 @@ function SuggestPanel({ B }: { B: typeof DARK }) {
     }
   }
 
+  const scoreColor = (n: number) => n >= 80 ? B.green : n >= 60 ? '#f59e0b' : '#ef4444'
+  const priColor: Record<string,string> = { high:'#ef4444', medium:'#f59e0b', low:B.muted }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      <div style={{ fontSize:13, fontWeight:800 }}>💡 AI Ideas</div>
+      <div style={{ fontSize:13, fontWeight:800 }}>💡 AI Ideas & Audit</div>
       <div style={{ fontSize:11, color:B.muted, lineHeight:1.6 }}>
-        AI looks at your current site and suggests what to improve next — add sections, swap copy, fix tone. Click Apply on any idea.
+        AI looks at your current site and tells you what to improve. <strong>Get ideas</strong> for one-click fixes; <strong>Run audit</strong> for a graded report.
       </div>
-      <button onClick={refresh} disabled={loading}
-        style={{ padding:'10px', borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:loading?'wait':'pointer' }}>
-        {loading ? '⏳ Analyzing your site...' : '✦ Get fresh ideas'}
-      </button>
+      <div style={{ display:'flex', gap:6 }}>
+        <button onClick={refresh} disabled={loading||auditing}
+          style={{ flex:1, padding:'10px', borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:(loading||auditing)?'wait':'pointer' }}>
+          {loading ? '⏳ Ideas...' : '✦ Get ideas'}
+        </button>
+        <button onClick={runAudit} disabled={loading||auditing}
+          style={{ flex:1, padding:'10px', borderRadius:8, background:B.blue, color:'#fff', fontSize:12, fontWeight:800, border:'none', cursor:(loading||auditing)?'wait':'pointer' }}>
+          {auditing ? '⏳ Auditing...' : '⚖ Run audit'}
+        </button>
+      </div>
       {error && <div style={{ background:'#ef444420', border:'1px solid #ef4444', borderRadius:8, padding:10, fontSize:11, color:'#ef4444' }}>{error}</div>}
-      {items.length === 0 && !loading && !error && (
+
+      {audit && (
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:14 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em' }}>Score</div>
+            <button onClick={()=>setAudit(null)} style={{ background:'none', border:'none', color:B.muted, fontSize:14, cursor:'pointer' }}>✕</button>
+          </div>
+          <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:10 }}>
+            <div style={{ fontSize:42, fontWeight:900, color:scoreColor(audit.score), lineHeight:1 }}>{audit.score}</div>
+            <div style={{ fontSize:14, fontWeight:700, color:B.muted }}>/ 100 · {audit.grade}</div>
+          </div>
+          <div style={{ fontSize:11, color:B.muted, lineHeight:1.6, marginBottom:12 }}>{audit.summary}</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:14 }}>
+            {(audit.categories||[]).map((c: any, i: number) => (
+              <div key={i}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
+                  <span style={{ fontSize:11, fontWeight:700 }}>{c.name}</span>
+                  <span style={{ fontSize:11, fontWeight:800, color:scoreColor(c.score) }}>{c.score}</span>
+                </div>
+                <div style={{ height:5, background:B.surface, borderRadius:999 }}>
+                  <div style={{ width:`${c.score}%`, height:'100%', background:scoreColor(c.score), borderRadius:999 }} />
+                </div>
+                <div style={{ fontSize:10, color:B.muted, marginTop:3, lineHeight:1.5 }}>{c.note}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Top fixes</div>
+          {(audit.fixes||[]).map((f: any, i: number) => (
+            <div key={i} style={{ paddingTop:8, borderTop:i>0?`1px solid ${B.border}`:'none', marginTop:i>0?8:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                <span style={{ fontSize:9, padding:'2px 6px', borderRadius:999, background:`${priColor[f.priority]}30`, color:priColor[f.priority], fontWeight:800, textTransform:'uppercase' }}>{f.priority}</span>
+                <span style={{ fontSize:12, fontWeight:700 }}>{f.title}</span>
+              </div>
+              <div style={{ fontSize:11, color:B.muted, lineHeight:1.6 }}>{f.reason}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {items.length === 0 && !loading && !error && !audit && (
         <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:14, fontSize:11, color:B.muted, lineHeight:1.6 }}>
-          No suggestions yet. Click the button above to have AI review your site.
+          No suggestions yet. Use the buttons above to have AI review your site.
         </div>
       )}
       {items.map((s, i) => (
@@ -1197,6 +1274,22 @@ export default function App() {
   })
 
   const openImagePicker = (onSelect: (url: string) => void) => setImagePicker({ onSelect })
+
+  // Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z = redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey
+      if (!meta) return
+      const target = e.target as HTMLElement | null
+      // Don't hijack browser undo inside form fields the user is actively typing in
+      if (target && /^(input|textarea|select)$/i.test(target.tagName)) return
+      if (target && target.isContentEditable) return
+      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
+      else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { e.preventDefault(); redo() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const downloadSite = async () => {
     setExporting(true)

@@ -11,6 +11,25 @@ function escapeHtml(s: string): string {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
+/**
+ * Build an Unsplash URL with width/format hints. Falls through unchanged
+ * if the input is not a images.unsplash.com URL (so user-pasted URLs and
+ * data: URIs are preserved exactly).
+ */
+function imgUrl(raw: string, w: number, opts: { webp?: boolean } = {}): string {
+  if (!raw) return ''
+  if (!raw.includes('images.unsplash.com')) return raw
+  const url = raw.split('?')[0]
+  const parts = [`w=${w}`, 'q=80', 'auto=format', 'fit=crop']
+  if (opts.webp) parts.push('fm=webp')
+  return `${url}?${parts.join('&')}`
+}
+
+function srcSet(raw: string, base: number): string {
+  if (!raw || !raw.includes('images.unsplash.com')) return ''
+  return `srcset="${imgUrl(raw, base)} 1x, ${imgUrl(raw, base*2)} 2x"`
+}
+
 // Tiny, safe Markdown→HTML for auto-generated privacy text. Headings, bold,
 // paragraphs, lists. Not a general-purpose renderer.
 function renderMarkdown(md: string): string {
@@ -210,7 +229,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
         ${d.ctaText?`<a href="#contact" class="btn btn-primary" data-sf-field="ctaText">${d.ctaText}</a>`:''}
       </div>
       <div data-aos="fade-up" data-aos-delay="100">
-        <img src="${d.image}" alt="About us" data-sf-image="image" style="border-radius:var(--radius);width:100%;height:460px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+        <img src="${imgUrl(d.image,800)}" ${srcSet(d.image,800)} alt="About us" loading="lazy" data-sf-image="image" style="border-radius:var(--radius);width:100%;height:460px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.15)">
       </div>
     </div>
   </div>
@@ -229,7 +248,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
         <div style="color:var(--primary);font-size:20px;margin-bottom:12px">★★★★★</div>
         <p style="font-size:15px;line-height:1.75;color:${dark?'#ccc':'#444'};margin-bottom:20px;font-style:italic">"${t.quote}"</p>
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${t.avatar}" alt="${t.name}" style="width:44px;height:44px;border-radius:50%;object-fit:cover">
+          <img src="${t.avatar}" alt="${t.name}" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover">
           <div><div style="font-weight:700;font-size:14px">${t.name}</div><div style="font-size:12px;color:${dark?'#777':'#999'}">${t.role}</div></div>
         </div>
       </div>`).join('')}
@@ -248,7 +267,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     <div class="sf-grid-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
       ${(d.images||[]).map((img: any, idx: number) => `
       <div data-aos="fade-up" data-aos-delay="${idx*50}" style="position:relative;overflow:hidden;border-radius:var(--radius);aspect-ratio:4/3;cursor:pointer" onmouseenter="this.querySelector('div').style.opacity='1'" onmouseleave="this.querySelector('div').style.opacity='0'">
-        <img src="${img.url}" alt="${img.alt}" style="width:100%;height:100%;object-fit:cover;transition:transform .4s" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform=''">
+        <img src="${imgUrl(img.url,600)}" ${srcSet(img.url,600)} alt="${img.alt}" loading="lazy" style="width:100%;height:100%;object-fit:cover;transition:transform .4s" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform=''">
         <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;padding:16px;opacity:0;transition:.3s">
           <span style="color:#fff;font-weight:700;font-size:14px">${img.caption||''}</span>
         </div>
@@ -290,7 +309,7 @@ function renderSection(sec: Section, theme: Theme, site: SiteData): string {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px">
       ${(d.members||[]).map((m: any, i: number) => `
       <div data-aos="fade-up" data-aos-delay="${i*100}" style="text-align:center">
-        <img src="${m.image}" alt="${m.name}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 16px;border:3px solid var(--primary)">
+        <img src="${m.image}" alt="${m.name}" loading="lazy" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 16px;border:3px solid var(--primary)">
         <div style="font-size:16px;font-weight:800;margin-bottom:4px">${m.name}</div>
         <div style="font-size:13px;color:var(--primary);font-weight:600;margin-bottom:10px">${m.role}</div>
         <p style="font-size:13px;color:${dark?'#888':'#777'};line-height:1.6">${m.bio}</p>

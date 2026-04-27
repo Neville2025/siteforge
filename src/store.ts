@@ -246,9 +246,51 @@ export const useStore = create<BuilderState>()(
         set({ site: fixed, activePageId: fixed.pages[0]?.id || '', activeSectionId: null })
       },
     }),
-    { name: 'siteforge-v2' }
+    {
+      name: 'siteforge-v2',
+      // Don't persist UI state — only the site itself
+      partialize: (s) => ({ site: s.site, activePageId: s.activePageId }),
+    }
   )
 )
+
+// ── Undo / Redo (in-memory, not persisted) ────────────────────
+const past: SiteData[] = []
+const future: SiteData[] = []
+const HISTORY_LIMIT = 50
+let suppress = false
+
+useStore.subscribe((state, prev) => {
+  if (suppress) return
+  if (state.site === prev.site) return
+  past.push(prev.site)
+  if (past.length > HISTORY_LIMIT) past.shift()
+  future.length = 0
+})
+
+export function undo() {
+  const prev = past.pop()
+  if (!prev) return false
+  future.push(useStore.getState().site)
+  suppress = true
+  useStore.setState({ site: prev, activeSectionId: null })
+  suppress = false
+  return true
+}
+
+export function redo() {
+  const next = future.pop()
+  if (!next) return false
+  past.push(useStore.getState().site)
+  suppress = true
+  useStore.setState({ site: next, activeSectionId: null })
+  suppress = false
+  return true
+}
+
+export function historyState() {
+  return { canUndo: past.length > 0, canRedo: future.length > 0 }
+}
 
 export const getActivePage = (s: BuilderState) =>
   s.site.pages.find(p => p.id === s.activePageId)

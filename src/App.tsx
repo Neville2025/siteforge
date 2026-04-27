@@ -38,7 +38,7 @@ function Label({ children }: any) {
 }
 
 // ── Section Preview (rendered in iframe) ─────────────────────
-function SiteCanvas({ B }: { B: typeof DARK }) {
+function SiteCanvas({ B, onMagicEdit }: { B: typeof DARK; onMagicEdit: () => void }) {
   const store = useStore()
   const page = getActivePage(store)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -65,14 +65,20 @@ function SiteCanvas({ B }: { B: typeof DARK }) {
   const exportHtml = renderPage(store.site, page, false)
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', background:B.surface, overflow:'hidden' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'8px 16px', borderBottom:`1px solid ${B.border}`, background:B.bg, flexShrink:0 }}>
-        <div style={{ fontSize:11, color:B.muted, marginRight:8 }}>
-          <strong style={{ color:B.text }}>{page.name}</strong> — Click any section in the preview to edit it
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'8px 16px', borderBottom:`1px solid ${B.border}`, background:B.bg, flexShrink:0 }}>
+        <div style={{ fontSize:11, color:B.muted }}>
+          <strong style={{ color:B.text }}>{page.name}</strong>
         </div>
-        <button onClick={()=>{ const w=window.open('','_blank'); w?.document.write(exportHtml); w?.document.close() }}
-          style={{ fontSize:10, padding:'4px 10px', borderRadius:6, background:B.card, border:`1px solid ${B.border}`, color:B.muted, cursor:'pointer' }}>
-          ⛶ Full Tab
-        </button>
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={onMagicEdit}
+            style={{ fontSize:11, padding:'5px 12px', borderRadius:7, background:B.green, border:'none', color:B.bg, fontWeight:800, cursor:'pointer' }}>
+            ✨ Magic Edit Page
+          </button>
+          <button onClick={()=>{ const w=window.open('','_blank'); w?.document.write(exportHtml); w?.document.close() }}
+            style={{ fontSize:11, padding:'5px 12px', borderRadius:7, background:B.card, border:`1px solid ${B.border}`, color:B.muted, cursor:'pointer' }}>
+            ⛶ Full Tab
+          </button>
+        </div>
       </div>
       <iframe
         ref={iframeRef}
@@ -508,6 +514,126 @@ function AddSectionModal({ B }: { B: typeof DARK }) {
   )
 }
 
+// ── Magic Edit Page Modal ─────────────────────────────────────
+function MagicEditPageModal({ B, onClose }: { B: typeof DARK; onClose: () => void }) {
+  const store = useStore()
+  const page = getActivePage(store)
+  const [instruction, setInstruction] = useState('')
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState('')
+
+  const QUICK = [
+    'Rewrite all copy on this page to be more compelling and benefit-focused',
+    'Make all the copy shorter and punchier',
+    'Make the tone more professional and authoritative',
+    'Make the tone more friendly and approachable',
+    'Add more specific details about what we offer',
+    'Replace generic content with specific industry examples',
+  ]
+
+  const apply = async (text: string) => {
+    if (!page || !text.trim()) return
+    setWorking(true); setError('')
+    try {
+      const res = await fetch('/api/edit-page', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          sections: page.sections,
+          instruction: text,
+          businessName: store.site.name,
+          industry: '',
+        })
+      })
+      if (!res.ok) {
+        const t = await res.text()
+        let msg = 'Edit failed'
+        try { msg = JSON.parse(t).error } catch { msg = t.slice(0,150) }
+        throw new Error(msg)
+      }
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No stream')
+      const dec = new TextDecoder()
+      let raw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += dec.decode(value, { stream: true })
+      }
+      raw = raw.trim()
+      let parsed: any
+      try { parsed = JSON.parse(raw) } catch { throw new Error('AI response was incomplete. Try again.') }
+
+      // Apply updates
+      parsed.updates?.forEach((u: any) => {
+        const sec = page.sections[u.sectionIndex]
+        if (sec) store.setSectionData(sec.id, { ...sec.data, ...u.data })
+      })
+      onClose()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Edit failed')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const inp: React.CSSProperties = { width:'100%', padding:'10px 14px', background:B.card, border:`1px solid ${B.border}`, borderRadius:8, color:B.text, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
+
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      onClick={onClose}>
+      <motion.div initial={{ scale:.95 }} animate={{ scale:1 }}
+        onClick={e=>e.stopPropagation()}
+        style={{ background:B.surface, borderRadius:16, padding:28, width:580, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', border:`1px solid ${B.border}` }}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <div>
+            <div style={{ fontSize:20, fontWeight:900, marginBottom:4 }}>✨ Magic Edit Page</div>
+            <div style={{ fontSize:12, color:B.muted }}>Tell AI what to change on the <strong style={{ color:B.text }}>{page?.name}</strong> page</div>
+          </div>
+          <button onClick={onClose} disabled={working} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:24 }}>✕</button>
+        </div>
+
+        {!working && <>
+          <div style={{ marginTop:18 }}>
+            <textarea value={instruction} onChange={e=>setInstruction(e.target.value)} rows={4}
+              placeholder={`What should AI change?\n\nExamples:\n• "Make the headline more powerful and bold"\n• "Add a section about our 24/7 emergency service"\n• "Change all references to 'we' to 'I'"\n• "Make all content focus more on small businesses"`}
+              style={{ ...inp, resize:'none', lineHeight:1.6 }} />
+            <button onClick={()=>apply(instruction)}
+              disabled={!instruction.trim()}
+              style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:9, background:B.green, color:B.bg, fontSize:13, fontWeight:800, border:'none', cursor:'pointer', opacity:!instruction.trim()?.4:1 }}>
+              ✦ Apply Changes
+            </button>
+          </div>
+
+          <div style={{ marginTop:20 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>Quick Actions</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {QUICK.map(q => (
+                <button key={q} onClick={()=>apply(q)}
+                  style={{ textAlign:'left' as const, padding:'10px 14px', background:B.card, border:`1px solid ${B.border}`, borderRadius:8, color:B.text, fontSize:12, cursor:'pointer', lineHeight:1.5 }}>
+                  → {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && <div style={{ background:'#ef444420', border:'1px solid #ef4444', borderRadius:8, padding:12, fontSize:12, color:'#ef4444', marginTop:14 }}>{error}</div>}
+        </>}
+
+        {working && (
+          <div style={{ padding:'40px 0', textAlign:'center' }}>
+            <motion.div animate={{ rotate:360 }} transition={{ repeat:Infinity, duration:1.5, ease:'linear' }}
+              style={{ width:48, height:48, borderRadius:'50%', border:`3px solid ${B.border}`, borderTopColor:B.green, margin:'0 auto 20px' }} />
+            <div style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>AI is updating the page...</div>
+            <div style={{ fontSize:11, color:B.muted }}>Editing copy, replacing content, generating new sections</div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ── Magic Build Modal ─────────────────────────────────────────
 function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }) {
   const store = useStore()
@@ -754,6 +880,7 @@ export default function App() {
   const store = useStore()
   const [exporting, setExporting] = useState(false)
   const [showMagic, setShowMagic] = useState(false)
+  const [showEditPage, setShowEditPage] = useState(false)
 
   const downloadSite = async () => {
     setExporting(true)
@@ -821,7 +948,7 @@ export default function App() {
       {/* BODY */}
       <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
         <LeftPanel B={B} />
-        <SiteCanvas B={B} />
+        <SiteCanvas B={B} onMagicEdit={()=>setShowEditPage(true)} />
         <RightPanel B={B} />
       </div>
 
@@ -833,6 +960,11 @@ export default function App() {
       {/* MAGIC BUILD MODAL */}
       <AnimatePresence>
         {showMagic && <MagicBuildModal B={B} onClose={()=>setShowMagic(false)} />}
+      </AnimatePresence>
+
+      {/* MAGIC EDIT PAGE MODAL */}
+      <AnimatePresence>
+        {showEditPage && <MagicEditPageModal B={B} onClose={()=>setShowEditPage(false)} />}
       </AnimatePresence>
     </div>
   )

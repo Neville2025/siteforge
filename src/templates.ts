@@ -44,7 +44,7 @@ const safetrak = (): SiteData => ({
         { icon:'cpu', title:'Hardware included', desc:'OBD or hardwired tracker fitted free at your premises within 48 hours.' },
         { icon:'zap', title:'Pay-as-you-grow', desc:'Add a vehicle this morning, see it on the dashboard before lunch.' },
       ] } },
-      { id:'s5', type:'testimonials', data:{ heading:'Trusted by SA fleet owners', items:[
+      { id:'s5', type:'testimonials', data:{ heading:'Trusted by SA fleet owners', variant:'marquee', items:[
         { name:'Sipho Dlamini', role:'Operations Manager, Khanyisa Logistics', quote:'We cut fuel costs 18% in the first quarter. The real-time tracking pays for itself.', avatar:av('Sipho Dlamini','00c758') },
         { name:'Sarah Johnson', role:'Owner, Cape Town Plumbers', quote:'The engine-cut feature recovered a stolen bakkie within an hour. SafeTrak literally saved my business.', avatar:av('Sarah Johnson','3080ff') },
         { name:'Thandi Naidoo', role:'Director, Ubuntu Couriers', quote:'Driver behaviour scoring drove our accident rate down by 40%. Insurance dropped our premium.', avatar:av('Thandi Naidoo','fe6e00') },
@@ -53,7 +53,7 @@ const safetrak = (): SiteData => ({
     ]},
     { id:'p-pricing', name:'Pricing', slug:'/pricing', sections:[
       { id:'s7', type:'hero', data:{ headline:'Simple pricing. Pay per vehicle.', subtext:'No setup fees. No long contracts. Cancel anytime.', ctaText:'Start Free Trial', ctaUrl:'#contact', ctaText2:'', image:'', showStats:false } },
-      { id:'s8', type:'pricing', data:{ heading:'Choose your plan', subheading:'All plans include hardware, fitment, and 24/7 dashboard access.', taxIncluded:true, items:[
+      { id:'s8', type:'pricing', data:{ heading:'Choose your plan', subheading:'All plans include hardware, fitment, and 24/7 dashboard access.', variant:'comparison', taxIncluded:true, items:[
         { name:'Starter', price:'R249', period:'/vehicle/month', features:['Live GPS tracking','5-second updates','Trip history (90 days)','Speed & geofence alerts','Mobile app','Email support'], cta:'Start Free Trial', highlighted:false },
         { name:'Pro', price:'R349', period:'/vehicle/month', features:['Everything in Starter','5-year trip history','Driver behaviour scoring','Fuel & overtime reports','WhatsApp & SMS alerts','Priority support'], cta:'Start Free Trial', highlighted:true },
         { name:'Fleet', price:'Custom', period:'', features:['Everything in Pro','Remote engine cut','Custom integrations (Sage/Xero)','Dedicated account manager','SLA guarantee','Volume discount from 25 vehicles'], cta:'Talk to Sales', highlighted:false },
@@ -302,7 +302,7 @@ const dentist = (): SiteData => ({
   theme:{ primaryColor:'#0891b2', secondaryColor:'#0e7490', accentColor:'#06b6d4', fontHeading:'Inter', fontBody:'Inter', borderRadius:'medium', style:'light' },
   pages:[
     { id:'d-home', name:'Home', slug:'/', sections:[
-      { id:'d1', type:'hero', data:{ headline:'Dentistry without the dread', subtext:'A modern Sandton practice run by Dr Naidoo and Dr Mokoena. Pain-free, well-priced, no upselling. Medical-aid friendly.', ctaText:'Book Online', ctaUrl:'#contact', ctaText2:'Our Services', image:u('photo-1559757148-5c350d0d3c56'), showStats:true, stat1val:'8,000+', stat1label:'Patients', stat2val:'4.9★', stat2label:'Google reviews', stat3val:'12yr', stat3label:'In practice', stat4val:'<7d', stat4label:'New patient wait' } },
+      { id:'d1', type:'hero', data:{ headline:'Dentistry without the dread', subtext:'A modern Sandton practice run by Dr Naidoo and Dr Mokoena. Pain-free, well-priced, no upselling. Medical-aid friendly.', ctaText:'Book Online', ctaUrl:'#contact', ctaText2:'Our Services', image:u('photo-1606811971618-4486d14f3f99'), showStats:true, stat1val:'8,000+', stat1label:'Patients', stat2val:'4.9★', stat2label:'Google reviews', stat3val:'12yr', stat3label:'In practice', stat4val:'<7d', stat4label:'New patient wait' } },
       { id:'d2', type:'services', data:{ heading:'Treatments we offer', subheading:'General, cosmetic, and emergency dentistry under one roof.', items:[
         { icon:'check-circle', title:'Check-up & cleaning', desc:'Comprehensive 45-min appointment with hygienist scale & polish included.' },
         { icon:'sparkles', title:'Whitening', desc:'In-chair Zoom whitening (90 min). Take-home kits also available.' },
@@ -349,7 +349,7 @@ const gym = (): SiteData => ({
   pages:[
     { id:'g-home', name:'Home', slug:'/', sections:[
       { id:'g1', type:'hero', data:{ headline:'Train like you mean it.', subtext:'A real strength gym in Rosebank. Not a treadmill farm. Coached barbell programs, small group classes, and serious accountability.', ctaText:'Start a Free Trial', ctaUrl:'#contact', ctaText2:'See Programs', image:u('photo-1534438327276-14e5300c3a48'), showStats:true, stat1val:'180+', stat1label:'Members', stat2val:'92%', stat2label:'12-month retention', stat3val:'6:1', stat3label:'Coach to client', stat4val:'7d', stat4label:'Week-long trial' } },
-      { id:'g2', type:'services', data:{ heading:'Programs', subheading:'Three doors in. All of them coached.', items:[
+      { id:'g2', type:'services', data:{ heading:'Programs', subheading:'Three doors in. All of them coached.', variant:'bento', items:[
         { icon:'bolt', title:'Strength foundations', desc:'12-week barbell beginner program. Squat, bench, deadlift, press. Coached every session.' },
         { icon:'rocket', title:'Hybrid performance', desc:'Strength + conditioning for athletes and ex-athletes. Run faster, lift heavier, recover smarter.' },
         { icon:'heart', title:'Strong + healthy 40+', desc:'Joint-friendly strength training designed for adults over 40. Build muscle, build bone, stay sharp.' },
@@ -360,12 +360,12 @@ const gym = (): SiteData => ({
         { icon:'clock', title:'Open 5am – 8pm', desc:'Train before work, after work, on lunch. Members get 24/7 app access for self-led sessions.' },
         { icon:'thumbs-up', title:'No annual contract', desc:'Month-to-month. Cancel anytime. We earn your subscription every month.' },
       ] } },
-      { id:'g4', type:'pricing', data:{ heading:'Membership', subheading:'No joining fee. No contract. Cancel anytime.', taxIncluded:true, items:[
+      { id:'g4', type:'pricing', data:{ heading:'Membership', subheading:'No joining fee. No contract. Cancel anytime.', variant:'comparison', taxIncluded:true, items:[
         { name:'Foundations', price:'R1,290', period:'/month', features:['3 coached classes/week','App-based programming','Form check via video','Free re-testing every 8 weeks'], cta:'Start Free Trial', highlighted:false },
         { name:'Unlimited', price:'R1,790', period:'/month', features:['Unlimited coached classes','Open gym access 5am-8pm','Custom programming','Nutrition consult quarterly','Body comp scan monthly'], cta:'Start Free Trial', highlighted:true },
         { name:'Personal coaching', price:'R3,490', period:'/month', features:['8 1-on-1 PT sessions','Custom written program','Weekly check-ins','Nutrition + sleep coaching','Includes Unlimited membership'], cta:'Talk to a Coach', highlighted:false },
       ] } },
-      { id:'g5', type:'testimonials', data:{ heading:'Member results', items:[
+      { id:'g5', type:'testimonials', data:{ heading:'Member results', variant:'marquee', items:[
         { name:'Tebogo M.', role:'Member 2 years', quote:'Squat went from 60kg to 140kg. I sleep better. I lost 14kg. The coaching changed my life.', avatar:av('Tebogo M','ef4444') },
         { name:'Sarah K.', role:'Member 1 year', quote:'I am 47. I was nervous about a strength gym. After two months I was deadlifting more than my husband.', avatar:av('Sarah K','0a0a0a') },
         { name:'Bongani D.', role:'Member 18 months', quote:'I have been to every gym in Joburg. This is the only one where coaches actually coach. Worth every cent.', avatar:av('Bongani D','fbbf24') },
@@ -431,7 +431,7 @@ export const TEMPLATES: SiteTemplate[] = [
   { id:'attorney',  name:'Mahlangu & Associates', category:'Professional', description:'Boutique law firm — practice areas, fixed-fee pricing',  emoji:'⚖', preview:u('photo-1486406146926-c627a92ad1ab'), build: attorney },
   { id:'lodge',     name:'Acacia Lodge',       category:'Hospitality',  description:'Bushveld lodge — gallery, rates, contact',                 emoji:'🏞', preview:u('photo-1564013799919-ab600027ffc6'), build: lodge },
   { id:'restaurant',name:'Maboneng Grill',     category:'Hospitality',  description:'Tshisanyama / steakhouse — menu, reservations, gallery',   emoji:'🍽', preview:u('photo-1414235077428-338989a2e8c0'), build: restaurant },
-  { id:'dentist',   name:'Bright Smile Dental',category:'Health',       description:'Modern dental practice — services, team, pricing',         emoji:'🦷', preview:u('photo-1559757148-5c350d0d3c56'), build: dentist },
+  { id:'dentist',   name:'Bright Smile Dental',category:'Health',       description:'Modern dental practice — services, team, pricing',         emoji:'🦷', preview:u('photo-1606811971618-4486d14f3f99'), build: dentist },
   { id:'gym',       name:'Iron + Oak Strength',category:'Fitness',      description:'Strength gym + PT studio — programs, membership',          emoji:'💪', preview:u('photo-1534438327276-14e5300c3a48'), build: gym },
   { id:'mechanic',  name:'Reliable Auto Workshop',category:'Trades',     description:'RMI-accredited mechanic — services, pricing, EFT',         emoji:'🔧', preview:u('photo-1632823469850-2f77dd9c7f93'), build: mechanic },
 ]

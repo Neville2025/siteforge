@@ -768,6 +768,39 @@ function ImagePickerModal({ B, onClose, onSelect }: { B: typeof DARK; onClose: (
 }
 
 // ── Welcome Modal (first-time experience) ─────────────────────
+// ── Mobile / small-screen notice ──────────────────────────────
+function MobileNotice({ B, onDismiss }: { B: typeof DARK; onDismiss: () => void }) {
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.95)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <motion.div initial={{ scale:.94, y:10 }} animate={{ scale:1, y:0 }}
+        style={{ background:B.surface, borderRadius:16, padding:30, width:'100%', maxWidth:420, textAlign:'center' as const, border:`1px solid ${B.border}` }}>
+        <div style={{ fontSize:48, marginBottom:14 }}>🖥️</div>
+        <div style={{ fontSize:20, fontWeight:900, marginBottom:10 }}>Best viewed on a desktop</div>
+        <div style={{ fontSize:13, color:B.muted, lineHeight:1.7, marginBottom:22 }}>
+          SiteForge is a full website builder with side panels, drag-to-reorder sections, and a live preview. It's tight on a phone screen.
+          <br/><br/>
+          Open <strong style={{ color:B.text }}>dashboard-neon-eight-82.vercel.app</strong> on a laptop or desktop for the full experience.
+        </div>
+        <div style={{ fontSize:11, color:B.muted, marginBottom:18, textAlign:'left' as const, padding:'12px 14px', background:B.card, borderRadius:8 }}>
+          <strong style={{ color:B.text, display:'block', marginBottom:6 }}>What works on mobile:</strong>
+          • Preview your generated sites<br/>
+          • View AI Ideas / Audit results<br/>
+          • Quick text edits<br/><br/>
+          <strong style={{ color:B.text, display:'block', marginBottom:6 }}>What needs desktop:</strong>
+          • Magic Build & Templates picker<br/>
+          • Drag-to-reorder sections<br/>
+          • Image library &amp; theme tab
+        </div>
+        <button onClick={onDismiss}
+          style={{ padding:'12px 24px', borderRadius:10, background:B.green, color:B.bg, fontSize:13, fontWeight:800, border:'none', cursor:'pointer', width:'100%' }}>
+          Continue on mobile anyway
+        </button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 function WelcomeModal({ B, onMagicBuild, onClose, onTemplates }: { B: typeof DARK; onMagicBuild: () => void; onClose: () => void; onTemplates: () => void }) {
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -1392,6 +1425,14 @@ export default function App() {
   const [showEditPage, setShowEditPage] = useState(false)
   const [showDeploy, setShowDeploy] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  // Show "use a desktop" notice once per device on small screens (<900 px wide).
+  const [showMobileNotice, setShowMobileNotice] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return false
+      if (window.innerWidth >= 900) return false
+      return localStorage.getItem('siteforge-mobile-dismissed') !== '1'
+    } catch { return false }
+  })
   const [imagePicker, setImagePicker] = useState<null | { onSelect: (url: string) => void }>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -1593,6 +1634,14 @@ export default function App() {
           onMagicBuild={()=>{ setShowWelcome(false); setShowMagic(true) }}
           onTemplates={()=>{ setShowWelcome(false); setShowTemplates(true) }}
           onClose={()=>setShowWelcome(false)} />}
+      </AnimatePresence>
+
+      {/* MOBILE NOTICE (shows only once per device on screens < 900px) */}
+      <AnimatePresence>
+        {showMobileNotice && <MobileNotice B={B} onDismiss={()=>{
+          try { localStorage.setItem('siteforge-mobile-dismissed','1') } catch {}
+          setShowMobileNotice(false)
+        }} />}
       </AnimatePresence>
     </div>
   )

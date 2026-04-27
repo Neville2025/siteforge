@@ -38,9 +38,9 @@ export function generatePrivacyPolicy({ businessName, email, address, country }:
   const safeEmail = email || `privacy@${(businessName||'business').toLowerCase().replace(/[^a-z0-9]+/g,'')}.com`
   const safeAddress = address || country.cities[0]
 
-  return `# Privacy Policy
-
-**Last updated:** ${date}
+  // The section's own heading already prints "Privacy Policy" — start the body
+  // with the "Last updated" line so we don't get a duplicate H2.
+  return `**Last updated:** ${date}
 
 This Privacy Policy explains how **${safeName}** ("we", "us", "our") collects, uses, and protects information about you when you use our website or services. We comply with ${lawText[law]}.
 

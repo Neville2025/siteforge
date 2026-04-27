@@ -1242,7 +1242,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
           { name:'Home', slug:'/', sections: [
             { type:'hero', data: { headline: content.heroHeadline, subtext: content.heroSubtext, ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'Learn More', image: content.heroImage, showStats: true, variant: resolvedPersona.variants.hero || 'default' } },
             { type:'stats', data: { stat1val: content.stats?.[0]?.val||'200+', stat1label: content.stats?.[0]?.label||'Clients', stat2val: content.stats?.[1]?.val||'98%', stat2label: content.stats?.[1]?.label||'Satisfaction', stat3val: content.stats?.[2]?.val||'10yr', stat3label: content.stats?.[2]?.label||'Experience', stat4val: content.stats?.[3]?.val||'24/7', stat4label: content.stats?.[3]?.label||'Support' } },
-            { type:'services', data: { heading:'What We Offer', subheading:'Professional services tailored to your needs.', items: servicesArr } },
+            { type:'services', data: { heading:'What We Offer', subheading:'Professional services tailored to your needs.', items: servicesArr, variant: (resolvedPersona.variants as any).services || 'grid' } },
             { type:'features', data: { heading:'Why Choose Us', subheading:'What makes us different.', items: (content.features && content.features.length > 0) ? content.features.map((f:any)=>({ icon:f.icon||'check', title:f.title, desc:f.desc })) : [{ icon:'check', title:'Edit to add a feature', desc:'Click to edit. Add a real differentiator.' }] } },
             { type:'testimonials', data: { heading:'What Clients Say', items: testimonialsArr, variant: resolvedPersona.variants.testimonials || 'cards' } },
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Take the next step today. We are here to help.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
@@ -1254,8 +1254,8 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
           ]},
           { name:'Services', slug:'/services', sections: [
             { type:'hero', data: { headline:`Our ${businessIndustry}`, subtext:'Discover the full range of services we offer.', ctaText:'Get a Quote', ctaUrl:'#contact', ctaText2:'', image:'', showStats: false } },
-            { type:'services', data: { heading:'Services We Offer', subheading:'Comprehensive solutions for your business.', items: servicesArr } },
-            { type:'pricing', data: { heading:'Pricing Packages', subheading:'Transparent pricing. No hidden fees.', taxIncluded:true, items: pricingArr } },
+            { type:'services', data: { heading:'Services We Offer', subheading:'Comprehensive solutions for your business.', items: servicesArr, variant: (resolvedPersona.variants as any).services || 'grid' } },
+            { type:'pricing', data: { heading:'Pricing Packages', subheading:'Transparent pricing. No hidden fees.', taxIncluded:true, items: pricingArr, variant: (resolvedPersona.variants as any).pricing || 'cards' } },
             { type:'faq', data: { heading:'Frequently Asked Questions', items: faqArr } },
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Contact us today for a free consultation.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
           ]},

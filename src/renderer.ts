@@ -100,7 +100,7 @@ function css(theme: Theme) {
     .mobile-menu.open{display:flex}
     .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:10px 0;border-bottom:1px solid ${theme.style==='dark'?'#222':'#f0f0f0'};text-decoration:none}
     .mobile-menu a:last-child{border-bottom:none}
-    @media(max-width:768px){.nav-links{display:none}.hamburger{display:flex}}
+    @media(max-width:680px){.nav-links{display:none}.hamburger{display:flex}}
     /* ── Animations ───────────────────────────────────────────── */
     @keyframes sf-gradient { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
     @keyframes sf-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }

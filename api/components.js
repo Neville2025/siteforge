@@ -1,10 +1,11 @@
-const TWENTY_FIRST_KEY = 'an_sk_f5835a496ebb15a8abe2b11dae3de1a37915ac38a1feee3163be371f0822623b'
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
+
+  const TWENTY_FIRST_KEY = process.env.TWENTY_FIRST_KEY
+  if (!TWENTY_FIRST_KEY) return res.status(500).json({ error: 'Component search is not configured. Set TWENTY_FIRST_KEY in the deployment environment.' })
 
   const { query } = req.query
   if (!query) return res.status(400).json({ error: 'query required' })

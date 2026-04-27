@@ -31,17 +31,20 @@ const DEFAULT_SITE: SiteData = {
   ]
 }
 
+export type RightTab = 'edit' | 'theme' | 'ai' | 'suggest' | 'components'
+
 interface BuilderState {
   site: SiteData
   activePageId: string
   activeSectionId: string | null
-  rightTab: 'edit' | 'theme' | 'ai' | 'components'
+  rightTab: RightTab
   showAddSection: boolean
   aiLoading: boolean
 
   // Site actions
   setSiteName: (name: string) => void
   setSiteTagline: (tagline: string) => void
+  setSiteLogo: (logo: string) => void
   setTheme: (theme: Partial<Theme>) => void
 
   // Page actions
@@ -63,7 +66,7 @@ interface BuilderState {
   addCustomSection: (html: string, name: string) => void
 
   // UI
-  setRightTab: (tab: 'edit' | 'theme' | 'ai' | 'components') => void
+  setRightTab: (tab: RightTab) => void
   setShowAddSection: (v: boolean) => void
   setAiLoading: (v: boolean) => void
 
@@ -83,6 +86,7 @@ export const useStore = create<BuilderState>()(
 
       setSiteName: (name) => set(s => ({ site: { ...s.site, name } })),
       setSiteTagline: (tagline) => set(s => ({ site: { ...s.site, tagline } })),
+      setSiteLogo: (logo: string) => set(s => ({ site: { ...s.site, logo } })),
       setTheme: (theme) => set(s => ({ site: { ...s.site, theme: { ...s.site.theme, ...theme } } })),
 
       setActivePage: (id) => set({ activePageId: id, activeSectionId: null }),
@@ -101,7 +105,7 @@ export const useStore = create<BuilderState>()(
         site: { ...s.site, pages: s.site.pages.map(p => p.id === id ? { ...p, name } : p) }
       })),
 
-      setActiveSection: (id) => set({ activeSectionId: id, rightTab: id ? 'edit' : 'edit' }),
+      setActiveSection: (id) => set({ activeSectionId: id, rightTab: 'edit' }),
       setRightTab: (tab) => set({ rightTab: tab }),
 
       addSection: (type) => {

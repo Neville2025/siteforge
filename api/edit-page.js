@@ -9,6 +9,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY in the deployment environment.' })
+
   const { sections, instruction, businessName, industry } = req.body
   if (!sections || !instruction) return res.status(400).json({ error: 'sections and instruction required' })
 

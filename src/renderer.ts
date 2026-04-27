@@ -34,6 +34,19 @@ function css(theme: Theme) {
     .mobile-menu.open{display:flex}
     .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:8px 0;border-bottom:1px solid ${theme.style==='dark'?'#222':'#f0f0f0'}}
     @media(max-width:768px){.nav-links{display:none}.hamburger{display:flex}}
+    /* Mobile responsiveness for section grids */
+    @media(max-width:900px){
+      .sf-grid-2{grid-template-columns:1fr !important;gap:32px !important}
+      .sf-grid-3{grid-template-columns:repeat(2,1fr) !important}
+      .sf-grid-4{grid-template-columns:repeat(2,1fr) !important;gap:18px !important}
+      .sf-stack-mobile{display:block !important}
+    }
+    @media(max-width:560px){
+      .sf-grid-3{grid-template-columns:1fr !important}
+      .sf-grid-4{grid-template-columns:repeat(2,1fr) !important}
+      .container{padding:0 18px !important}
+      .section-heading{font-size:28px !important}
+    }
     /* Content always visible. AOS attribute kept for export compatibility but no hiding. */
     [data-aos]{opacity:1 !important;transform:none !important}
   `
@@ -41,14 +54,17 @@ function css(theme: Theme) {
 
 function nav(site: SiteData, _activePage: Page, _theme: Theme) {
   const links = site.pages.map(p => `<a href="${p.slug==='/'?'index.html':p.slug.slice(1)+'.html'}">${p.name}</a>`).join('')
+  const logo = site.logo
+    ? `<img src="${site.logo}" alt="${site.name}" style="height:32px;width:auto;object-fit:contain">`
+    : `<div class="nav-logo-icon"></div>`
   return `
 <nav>
   <a class="nav-logo" href="index.html">
-    <div class="nav-logo-icon"></div>
-    ${site.name}
+    ${logo}
+    <span>${site.name}</span>
   </a>
   <div class="nav-links">${links}</div>
-  <div class="nav-cta"><a href="#contact" class="btn btn-primary">${site.tagline.split(' ').slice(0,2).join(' ') || 'Contact'}</a></div>
+  <div class="nav-cta"><a href="#contact" class="btn btn-primary">Contact</a></div>
   <div class="hamburger" onclick="this.nextElementSibling.classList.toggle('open')">
     <span></span><span></span><span></span>
   </div>
@@ -71,18 +87,18 @@ function renderSection(sec: Section, theme: Theme): string {
 
   switch (sec.type) {
     case 'hero': return `
-<section style="min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden;${d.image?`background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url('${d.image}') center/cover`:dark?'background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%)':'background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,#fff) 0%,#fff 60%)'}">
+<section style="min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden;${d.image?`background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.55)),url('${d.image}') center/cover`:dark?'background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%)':'background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,#fff) 0%,#fff 60%)'}" data-sf-bgimage="image">
   <div class="container" style="position:relative;z-index:1;padding:60px 24px">
     <div style="max-width:680px" data-aos="fade-up">
       <div class="section-label" style="${d.image?'color:#fff':''}">${theme.style==='dark'||d.image?'✦ Welcome':'✦ Welcome'}</div>
-      <h1 style="font-size:clamp(36px,5.5vw,64px);letter-spacing:-2px;margin-bottom:20px;${d.image?'color:#fff':''}">${d.headline}</h1>
-      <p style="font-size:18px;line-height:1.75;margin-bottom:36px;max-width:520px;${d.image?'color:rgba(255,255,255,.85)':dark?'color:#bbb':'color:#555'}">${d.subtext}</p>
+      <h1 data-sf-field="headline" style="font-size:clamp(36px,5.5vw,64px);letter-spacing:-2px;margin-bottom:20px;${d.image?'color:#fff':''}">${d.headline}</h1>
+      <p data-sf-field="subtext" style="font-size:18px;line-height:1.75;margin-bottom:36px;max-width:520px;${d.image?'color:rgba(255,255,255,.85)':dark?'color:#bbb':'color:#555'}">${d.subtext}</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a href="${d.ctaUrl||'#contact'}" class="btn btn-primary">${d.ctaText}</a>
-        ${d.ctaText2?`<a href="#" class="btn btn-outline" style="${d.image?'color:#fff;border-color:rgba(255,255,255,.4)':''}">${d.ctaText2}</a>`:''}
+        <a href="${d.ctaUrl||'#contact'}" class="btn btn-primary" data-sf-field="ctaText">${d.ctaText}</a>
+        ${d.ctaText2?`<a href="#" class="btn btn-outline" data-sf-field="ctaText2" style="${d.image?'color:#fff;border-color:rgba(255,255,255,.4)':''}">${d.ctaText2}</a>`:''}
       </div>
-      ${d.showStats?`<div style="display:flex;gap:40px;margin-top:52px;padding-top:40px;border-top:1px solid ${d.image?'rgba(255,255,255,.15)':dark?'#2a2a2a':'#e5e7eb'}">
-        ${['200+|Clients','98%|Satisfaction','10yr|Experience','24/7|Support'].map(s=>{const[v,l]=s.split('|');return`<div><div style="font-size:26px;font-weight:900;color:var(--primary)">${v}</div><div style="font-size:11px;${d.image||dark?'color:rgba(255,255,255,.6)':'color:#888'};margin-top:2px">${l}</div></div>`}).join('')}
+      ${d.showStats?`<div style="display:flex;gap:40px;margin-top:52px;padding-top:40px;border-top:1px solid ${d.image?'rgba(255,255,255,.15)':dark?'#2a2a2a':'#e5e7eb'};flex-wrap:wrap">
+        ${[1,2,3,4].map(n=>{const v=d[`stat${n}val`],l=d[`stat${n}label`];if(!v&&!l)return'';return`<div><div data-sf-field="stat${n}val" style="font-size:26px;font-weight:900;color:${d.image?'#fff':'var(--primary)'}">${v||''}</div><div data-sf-field="stat${n}label" style="font-size:11px;${d.image||dark?'color:rgba(255,255,255,.6)':'color:#888'};margin-top:2px">${l||''}</div></div>`}).join('')}
       </div>`:''}
     </div>
   </div>
@@ -91,11 +107,11 @@ function renderSection(sec: Section, theme: Theme): string {
     case 'stats': return `
 <section style="padding:40px 0;background:var(--primary)">
   <div class="container">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center">
+    <div class="sf-grid-4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center">
       ${['1','2','3','4'].map(n=>`
       <div data-aos="fade-up" data-aos-delay="${(parseInt(n)-1)*100}">
-        <div style="font-size:clamp(28px,4vw,42px);font-weight:900;color:#fff">${d[`stat${n}val`]||''}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${d[`stat${n}label`]||''}</div>
+        <div data-sf-field="stat${n}val" style="font-size:clamp(28px,4vw,42px);font-weight:900;color:#fff">${d[`stat${n}val`]||''}</div>
+        <div data-sf-field="stat${n}label" style="font-size:12px;color:rgba(255,255,255,.75);margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${d[`stat${n}label`]||''}</div>
       </div>`).join('')}
     </div>
   </div>
@@ -106,8 +122,8 @@ function renderSection(sec: Section, theme: Theme): string {
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">${d.heading}</div>
-      <h2 class="section-heading">${d.heading}</h2>
-      <p class="section-sub" style="margin:0 auto">${d.subheading}</p>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+      <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       ${(d.items||[]).map((item: any, i: number) => `
@@ -123,13 +139,13 @@ function renderSection(sec: Section, theme: Theme): string {
     case 'features': return `
 <section style="padding:80px 0">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
+    <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
       <div data-aos="fade-up">
         <div class="section-label">Why Us</div>
-        <h2 class="section-heading">${d.heading}</h2>
-        <p class="section-sub">${d.subheading}</p>
+        <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+        <p class="section-sub" data-sf-field="subheading">${d.subheading}</p>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" data-aos="fade-up" data-aos-delay="100">
+      <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" data-aos="fade-up" data-aos-delay="100">
         ${(d.items||[]).map((item: any) => `
         <div style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:24px">
           <div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--primary);font-weight:900;font-size:18px">${item.icon}</div>
@@ -144,16 +160,16 @@ function renderSection(sec: Section, theme: Theme): string {
     case 'about': return `
 <section style="padding:80px 0">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
+    <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center">
       <div data-aos="fade-up">
         <div class="section-label">Our Story</div>
-        <h2 class="section-heading">${d.heading}</h2>
-        <p style="font-size:16px;color:${dark?'#bbb':'#555'};line-height:1.8;margin-bottom:16px">${d.body}</p>
-        <p style="font-size:16px;color:${dark?'#bbb':'#555'};line-height:1.8;margin-bottom:28px">${d.body2||''}</p>
-        ${d.ctaText?`<a href="#contact" class="btn btn-primary">${d.ctaText}</a>`:''}
+        <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+        <p data-sf-field="body" style="font-size:16px;color:${dark?'#bbb':'#555'};line-height:1.8;margin-bottom:16px">${d.body}</p>
+        <p data-sf-field="body2" style="font-size:16px;color:${dark?'#bbb':'#555'};line-height:1.8;margin-bottom:28px">${d.body2||''}</p>
+        ${d.ctaText?`<a href="#contact" class="btn btn-primary" data-sf-field="ctaText">${d.ctaText}</a>`:''}
       </div>
       <div data-aos="fade-up" data-aos-delay="100">
-        <img src="${d.image}" alt="About us" style="border-radius:var(--radius);width:100%;height:460px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+        <img src="${d.image}" alt="About us" data-sf-image="image" style="border-radius:var(--radius);width:100%;height:460px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.15)">
       </div>
     </div>
   </div>
@@ -164,7 +180,7 @@ function renderSection(sec: Section, theme: Theme): string {
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Testimonials</div>
-      <h2 class="section-heading">${d.heading}</h2>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
       ${(d.items||[]).map((t: any, i: number) => `
@@ -185,10 +201,10 @@ function renderSection(sec: Section, theme: Theme): string {
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Gallery</div>
-      <h2 class="section-heading">${d.heading}</h2>
-      <p class="section-sub" style="margin:0 auto">${d.subheading}</p>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+      <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+    <div class="sf-grid-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
       ${(d.images||[]).map((img: any, idx: number) => `
       <div data-aos="fade-up" data-aos-delay="${idx*50}" style="position:relative;overflow:hidden;border-radius:var(--radius);aspect-ratio:4/3;cursor:pointer" onmouseenter="this.querySelector('div').style.opacity='1'" onmouseleave="this.querySelector('div').style.opacity='0'">
         <img src="${img.url}" alt="${img.alt}" style="width:100%;height:100%;object-fit:cover;transition:transform .4s" onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform=''">
@@ -205,8 +221,8 @@ function renderSection(sec: Section, theme: Theme): string {
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Pricing</div>
-      <h2 class="section-heading">${d.heading}</h2>
-      <p class="section-sub" style="margin:0 auto">${d.subheading}</p>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+      <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       ${(d.items||[]).map((p: any, i: number) => `
@@ -227,7 +243,7 @@ function renderSection(sec: Section, theme: Theme): string {
   <div class="container">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">Our Team</div>
-      <h2 class="section-heading">${d.heading}</h2>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px">
       ${(d.members||[]).map((m: any, i: number) => `
@@ -246,7 +262,7 @@ function renderSection(sec: Section, theme: Theme): string {
   <div class="container" style="max-width:760px">
     <div style="text-align:center;margin-bottom:52px" data-aos="fade-up">
       <div class="section-label">FAQ</div>
-      <h2 class="section-heading">${d.heading}</h2>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
     </div>
     <div data-aos="fade-up" data-aos-delay="100">
       ${(d.items||[]).map((item: any) => `
@@ -264,11 +280,11 @@ function renderSection(sec: Section, theme: Theme): string {
     case 'cta': return `
 <section style="padding:80px 0;background:linear-gradient(135deg,var(--primary),var(--secondary))">
   <div class="container" style="text-align:center" data-aos="fade-up">
-    <h2 style="font-size:clamp(28px,4vw,44px);letter-spacing:-1px;color:#fff;margin-bottom:16px">${d.heading}</h2>
-    <p style="font-size:17px;color:rgba(255,255,255,.82);max-width:520px;margin:0 auto 36px;line-height:1.75">${d.subtext}</p>
+    <h2 data-sf-field="heading" style="font-size:clamp(28px,4vw,44px);letter-spacing:-1px;color:#fff;margin-bottom:16px">${d.heading}</h2>
+    <p data-sf-field="subtext" style="font-size:17px;color:rgba(255,255,255,.82);max-width:520px;margin:0 auto 36px;line-height:1.75">${d.subtext}</p>
     <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-      <a href="${d.ctaUrl||'#contact'}" class="btn" style="background:#fff;color:var(--primary)">${d.ctaText}</a>
-      ${d.ctaText2?`<a href="#" class="btn" style="background:transparent;color:#fff;border:2px solid rgba(255,255,255,.5)">${d.ctaText2}</a>`:''}
+      <a href="${d.ctaUrl||'#contact'}" class="btn" data-sf-field="ctaText" style="background:#fff;color:var(--primary)">${d.ctaText}</a>
+      ${d.ctaText2?`<a href="#" class="btn" data-sf-field="ctaText2" style="background:transparent;color:#fff;border:2px solid rgba(255,255,255,.5)">${d.ctaText2}</a>`:''}
     </div>
   </div>
 </section>`
@@ -276,27 +292,34 @@ function renderSection(sec: Section, theme: Theme): string {
     case 'contact': return `
 <section id="contact" style="padding:80px 0">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px">
+    <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:60px">
       <div data-aos="fade-up">
         <div class="section-label">Contact</div>
-        <h2 class="section-heading">${d.heading}</h2>
-        <p style="font-size:16px;color:${dark?'#bbb':'#666'};line-height:1.75;margin-bottom:32px">${d.subtext}</p>
+        <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
+        <p data-sf-field="subtext" style="font-size:16px;color:${dark?'#bbb':'#666'};line-height:1.75;margin-bottom:32px">${d.subtext}</p>
         <div style="display:flex;flex-direction:column;gap:16px">
-          ${d.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📞</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Phone</div><div style="font-weight:600">${d.phone}</div></div></div>`:''}
-          ${d.email?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📧</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Email</div><div style="font-weight:600">${d.email}</div></div></div>`:''}
-          ${d.address?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📍</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Address</div><div style="font-weight:600">${d.address}</div></div></div>`:''}
-          ${d.hours?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🕐</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Hours</div><div style="font-weight:600">${d.hours}</div></div></div>`:''}
+          ${d.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📞</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Phone</div><div data-sf-field="phone" style="font-weight:600">${d.phone}</div></div></div>`:''}
+          ${d.email?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📧</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Email</div><div data-sf-field="email" style="font-weight:600">${d.email}</div></div></div>`:''}
+          ${d.address?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📍</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Address</div><div data-sf-field="address" style="font-weight:600">${d.address}</div></div></div>`:''}
+          ${d.hours?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🕐</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Hours</div><div data-sf-field="hours" style="font-weight:600">${d.hours}</div></div></div>`:''}
         </div>
       </div>
       <div data-aos="fade-up" data-aos-delay="100" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:36px">
         <h3 style="font-size:20px;font-weight:800;margin-bottom:24px">Send Us a Message</h3>
-        <form onsubmit="event.preventDefault();this.innerHTML='<p style=&quot;color:var(--primary);font-weight:600;font-size:16px&quot;>✓ Message sent! We will be in touch shortly.</p>'">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-            <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Name</label><input type="text" required placeholder="Your name" style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none"></div>
-            <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Email</label><input type="email" required placeholder="your@email.com" style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none"></div>
+        ${d.formKey ? `
+        <form action="https://api.web3forms.com/submit" method="POST" onsubmit="this.querySelector('button[type=submit]').textContent='Sending...';this.querySelector('button[type=submit]').disabled=true">
+          <input type="hidden" name="access_key" value="${d.formKey}">
+          <input type="hidden" name="subject" value="New enquiry from your website">
+          <input type="hidden" name="from_name" value="Website contact form">
+          <input type="checkbox" name="botcheck" style="display:none" tabindex="-1">
+          <input type="hidden" name="redirect" value="https://web3forms.com/success">` : `
+        <form action="mailto:${d.email||''}" method="POST" enctype="text/plain">`}
+          <div class="sf-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Name</label><input type="text" name="name" required placeholder="Your name" style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none"></div>
+            <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Email</label><input type="email" name="email" required placeholder="your@email.com" style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none"></div>
           </div>
-          <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Subject</label><input type="text" placeholder="How can we help?" style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none"></div>
-          <div style="margin-bottom:20px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Message</label><textarea rows="4" placeholder="Tell us about your project..." style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none;resize:vertical"></textarea></div>
+          <div style="margin-bottom:14px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Phone</label><input type="tel" name="phone" placeholder="+27 11 000 0000" style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none"></div>
+          <div style="margin-bottom:20px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:${dark?'#bbb':'#555'}">Message</label><textarea name="message" rows="4" required placeholder="Tell us about your project..." style="width:100%;padding:11px 14px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none;resize:vertical"></textarea></div>
           <button type="submit" class="btn btn-primary" style="width:100%">Send Message</button>
         </form>
       </div>
@@ -317,7 +340,9 @@ function footer(site: SiteData, theme: Theme): string {
     <div style="display:grid;grid-template-columns:1fr auto;gap:40px;align-items:start;margin-bottom:32px">
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          <div style="width:28px;height:28px;border-radius:6px;background:var(--primary)"></div>
+          ${site.logo
+            ? `<img src="${site.logo}" alt="${site.name}" style="height:28px;width:auto;object-fit:contain;background:#fff;padding:3px;border-radius:6px">`
+            : `<div style="width:28px;height:28px;border-radius:6px;background:var(--primary)"></div>`}
           <span style="font-weight:900;font-size:16px">${site.name}</span>
         </div>
         <p style="font-size:13px;color:#777;line-height:1.7;max-width:280px">${site.tagline}</p>
@@ -352,32 +377,98 @@ export function renderPage(site: SiteData, page: Page, interactive = false): str
 
   const interactiveScript = interactive ? `
 <style>
-  [data-section-id] { position: relative; cursor: pointer; transition: outline 0.15s; outline: 2px solid transparent; outline-offset: -2px }
-  [data-section-id]:hover { outline-color: ${theme.primaryColor}88 }
+  [data-section-id] { position: relative; transition: outline 0.15s; outline: 2px solid transparent; outline-offset: -2px }
+  [data-section-id]:hover { outline-color: ${theme.primaryColor}66 }
   [data-section-id].sf-active { outline-color: ${theme.primaryColor} !important; outline-width: 3px }
-  [data-section-id]::before {
-    content: attr(data-sf-label); position: absolute; top: 8px; left: 8px;
-    background: ${theme.primaryColor}; color: #fff; padding: 4px 10px; border-radius: 6px;
-    font-size: 11px; font-weight: 700; opacity: 0; transition: opacity 0.15s; z-index: 99; pointer-events: none;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-  [data-section-id]:hover::before, [data-section-id].sf-active::before { opacity: 1 }
+  [data-sf-field], [data-sf-image] { position: relative; transition: outline 0.12s; outline: 1px dashed transparent; outline-offset: 3px; cursor: text }
+  [data-sf-image] { cursor: zoom-in }
+  [data-sf-field]:hover, [data-sf-image]:hover { outline-color: ${theme.primaryColor} }
+  [data-sf-field][contenteditable="true"] { outline: 2px solid ${theme.primaryColor} !important; outline-offset: 4px; cursor: text; box-shadow: 0 0 0 6px ${theme.primaryColor}22 }
+  .sf-edit-tip { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; padding: 8px 14px; border-radius: 999px; font-size: 12px; font-family: 'Inter',system-ui,sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 9999; pointer-events: none; opacity: 0; transition: opacity .2s }
+  .sf-edit-tip.show { opacity: 1 }
 </style>
 <script>
+  // Block link navigation entirely while editing.
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a');
+    if (a) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  // Stop forms from submitting in the editor preview.
+  document.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); }, true);
+
+  function showTip(msg) {
+    let tip = document.querySelector('.sf-edit-tip');
+    if (!tip) { tip = document.createElement('div'); tip.className = 'sf-edit-tip'; document.body.appendChild(tip); }
+    tip.textContent = msg;
+    tip.classList.add('show');
+    clearTimeout(tip._t);
+    tip._t = setTimeout(() => tip.classList.remove('show'), 1800);
+  }
+
+  function sectionIdFor(el) {
+    const sec = el.closest('[data-section-id]');
+    return sec ? sec.getAttribute('data-section-id') : null;
+  }
+
+  // Section click: highlights it and notifies parent (when click is not on a field/image).
   document.querySelectorAll('[data-section-id]').forEach(el => {
-    const id = el.getAttribute('data-section-id');
-    el.setAttribute('data-sf-label', '✏️ Edit');
     el.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
+      // If clicked on an editable field/image, let those handlers run.
+      if (e.target.closest('[data-sf-field],[data-sf-image]')) return;
+      e.preventDefault(); e.stopPropagation();
+      const id = el.getAttribute('data-section-id');
       document.querySelectorAll('[data-section-id]').forEach(s => s.classList.remove('sf-active'));
       el.classList.add('sf-active');
       window.parent.postMessage({ type: 'section-click', id }, '*');
-    }, true);
+    });
   });
-  // Listen for active section update from parent
+
+  // Inline text edit: click to edit immediately.
+  document.querySelectorAll('[data-sf-field]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (el.getAttribute('contenteditable') === 'true') return;
+      el.setAttribute('contenteditable', 'true');
+      el.focus();
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      const s = window.getSelection();
+      s.removeAllRanges(); s.addRange(r);
+      showTip('Editing — press Enter or click away to save');
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+      if (e.key === 'Escape') { el.blur(); }
+    });
+    el.addEventListener('blur', () => {
+      if (el.getAttribute('contenteditable') !== 'true') return;
+      el.removeAttribute('contenteditable');
+      const value = el.textContent.trim();
+      const fieldKey = el.getAttribute('data-sf-field');
+      const id = sectionIdFor(el);
+      if (id && fieldKey) {
+        window.parent.postMessage({ type: 'field-update', sectionId: id, fieldKey, value }, '*');
+      }
+    });
+  });
+
+  // Click-to-swap image
+  document.querySelectorAll('[data-sf-image]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      const fieldKey = el.getAttribute('data-sf-image');
+      const id = sectionIdFor(el);
+      if (id && fieldKey) {
+        window.parent.postMessage({ type: 'image-click', sectionId: id, fieldKey }, '*');
+      }
+    });
+  });
+
+  // Listen for active section update or background image update from parent
   window.addEventListener('message', e => {
-    if (e.data && e.data.type === 'set-active' && e.data.id) {
+    if (!e.data) return;
+    if (e.data.type === 'set-active' && e.data.id) {
       document.querySelectorAll('[data-section-id]').forEach(s => s.classList.remove('sf-active'));
       const target = document.querySelector('[data-section-id="' + e.data.id + '"]');
       if (target) { target.classList.add('sf-active'); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }

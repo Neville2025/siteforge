@@ -10,7 +10,15 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       { key:'ctaUrl', label:'Button URL', type:'url', placeholder:'#contact' },
       { key:'ctaText2', label:'Secondary Button', type:'text', placeholder:'Learn More' },
       { key:'image', label:'Background Image', type:'image' },
-      { key:'showStats', label:'Show Stats Bar', type:'boolean' },
+      { key:'showStats', label:'Show inline stats (use only if no Stats Bar section)', type:'boolean', hint:'Toggle off if you have a separate Stats Bar section to avoid duplicate numbers.' },
+      { key:'stat1val', label:'Stat 1 Value', type:'text', placeholder:'200+' },
+      { key:'stat1label', label:'Stat 1 Label', type:'text', placeholder:'Clients' },
+      { key:'stat2val', label:'Stat 2 Value', type:'text', placeholder:'98%' },
+      { key:'stat2label', label:'Stat 2 Label', type:'text', placeholder:'Satisfaction' },
+      { key:'stat3val', label:'Stat 3 Value', type:'text', placeholder:'10yr' },
+      { key:'stat3label', label:'Stat 3 Label', type:'text', placeholder:'Experience' },
+      { key:'stat4val', label:'Stat 4 Value', type:'text', placeholder:'24/7' },
+      { key:'stat4label', label:'Stat 4 Label', type:'text', placeholder:'Support' },
     ],
     defaultData: {
       headline: 'We Build Solutions That Drive Results',
@@ -18,7 +26,11 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       ctaText: 'Get Started', ctaUrl: '#contact',
       ctaText2: 'See Our Work',
       image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1400&q=80',
-      showStats: true,
+      showStats: false,
+      stat1val:'200+', stat1label:'Clients',
+      stat2val:'98%',  stat2label:'Satisfaction',
+      stat3val:'10yr', stat3label:'Experience',
+      stat4val:'24/7', stat4label:'Support',
     }
   },
 
@@ -209,6 +221,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       { key:'email', label:'Email', type:'text', placeholder:'hello@business.co.za' },
       { key:'address', label:'Address', type:'text', placeholder:'Johannesburg, South Africa' },
       { key:'hours', label:'Business Hours', type:'text', placeholder:'Mon–Fri 8am–5pm' },
+      { key:'formKey', label:'Web3Forms Access Key (free)', type:'text', placeholder:'Paste from web3forms.com', hint:'Get a free key at web3forms.com — without it the form falls back to opening the visitor\'s email app.' },
     ],
     defaultData: {
       heading: 'Get In Touch',
@@ -217,6 +230,7 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       email: 'hello@yourbusiness.co.za',
       address: 'Johannesburg, South Africa',
       hours: 'Monday – Friday, 8:00am – 5:00pm',
+      formKey: '',
     }
   },
 }

@@ -5,6 +5,7 @@ import { useStore, getActivePage, getActiveSection } from './store'
 import { SECTION_DEFS, SECTION_GROUPS } from './sections'
 import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
 import { exportSite, renderPage } from './renderer'
+import { IMAGES, IMAGE_CATEGORIES, searchImages, type LibraryImage } from './imageLibrary'
 import { v4 as uuid } from 'uuid'
 import type { SectionType, Theme } from './types'
 import './index.css'
@@ -38,21 +39,35 @@ function Label({ children }: any) {
 }
 
 // ── Section Preview (rendered in iframe) ─────────────────────
-function SiteCanvas({ B, onMagicEdit }: { B: typeof DARK; onMagicEdit: () => void }) {
+function SiteCanvas({ B, onMagicEdit, openImagePicker }: { B: typeof DARK; onMagicEdit: () => void; openImagePicker: (cb:(url:string)=>void) => void }) {
   const store = useStore()
   const page = getActivePage(store)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // Listen for clicks from inside the iframe
+  // Listen for clicks/edits from inside the iframe
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'section-click' && e.data.id) {
-        store.setActiveSection(e.data.id)
+      const data = e.data
+      if (!data || typeof data !== 'object') return
+      if (data.type === 'section-click' && data.id) {
+        store.setActiveSection(data.id)
+      } else if (data.type === 'field-update' && data.sectionId && data.fieldKey) {
+        const page = getActivePage(useStore.getState())
+        const sec = page?.sections.find(s => s.id === data.sectionId)
+        const current = sec?.data[data.fieldKey]
+        if (current !== data.value) {
+          store.updateSectionData(data.sectionId, data.fieldKey, data.value)
+        }
+      } else if (data.type === 'image-click' && data.sectionId && data.fieldKey) {
+        store.setActiveSection(data.sectionId)
+        openImagePicker((url) => {
+          useStore.getState().updateSectionData(data.sectionId, data.fieldKey, url)
+        })
       }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [store])
+  }, [store, openImagePicker])
 
   // Send the active section to the iframe so it highlights it
   useEffect(() => {
@@ -163,7 +178,7 @@ function LeftPanel({ B }: { B: typeof DARK }) {
 }
 
 // ── Right panel: Edit section or theme ────────────────────────
-function RightPanel({ B }: { B: typeof DARK }) {
+function RightPanel({ B, openImagePicker }: { B: typeof DARK; openImagePicker: (cb:(url:string)=>void) => void }) {
   const store = useStore()
   const section = getActiveSection(store)
   const tab = store.rightTab
@@ -172,30 +187,15 @@ function RightPanel({ B }: { B: typeof DARK }) {
   const [aiLoading, setAiLoading] = useState(false)
   const [blockCategory, setBlockCategory] = useState('All')
   const [blockQuery, setBlockQuery] = useState('')
-  const [imageSearch, setImageSearch] = useState('')
-  const [, setImageLoading] = useState(false)
-  const [images, setImages] = useState<{url:string;alt:string}[]>([])
-  const [activeImageField, setActiveImageField] = useState<string|null>(null)
 
   const inp: React.CSSProperties = { background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding:'9px 12px', color:B.text, fontSize:12, outline:'none', width:'100%', boxSizing:'border-box', fontFamily:'inherit' }
 
-  const searchImages = async () => {
-    if (!imageSearch.trim()) return
-    setImageLoading(true)
-    try {
-      const kw = encodeURIComponent(imageSearch)
-      const urls = Array.from({ length:8 }, (_,i) => ({
-        url:`https://source.unsplash.com/800x600/?${kw}&sig=${i+Date.now()}`,
-        alt: imageSearch
-      }))
-      setImages(urls)
-    } catch {}
-    setImageLoading(false)
-  }
-
-  const askAi = async () => {
-    if (!aiPrompt.trim() || !section) return
+  const [aiError, setAiError] = useState('')
+  const askAi = async (overridePrompt?: string) => {
+    const text = (overridePrompt ?? aiPrompt).trim()
+    if (!text || !section) return
     setAiLoading(true)
+    setAiError('')
     try {
       const def = SECTION_DEFS[section.type]
       const res = await fetch('/api/ai-section', {
@@ -204,13 +204,21 @@ function RightPanel({ B }: { B: typeof DARK }) {
           sectionType: section.type,
           currentData: section.data,
           siteName: store.site.name,
-          prompt: aiPrompt,
+          prompt: text,
           fields: def?.fields || [],
         })
       })
       const data = await res.json()
-      if (data.updatedData) { store.setSectionData(section.id, { ...section.data, ...data.updatedData }); setAiPrompt('') }
-    } catch {}
+      if (!res.ok) throw new Error(data.error || 'AI request failed')
+      if (data.updatedData && Object.keys(data.updatedData).length > 0) {
+        store.setSectionData(section.id, { ...section.data, ...data.updatedData })
+        setAiPrompt('')
+      } else {
+        setAiError('AI returned no changes. Try rephrasing.')
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'AI request failed')
+    }
     setAiLoading(false)
   }
 
@@ -229,7 +237,7 @@ function RightPanel({ B }: { B: typeof DARK }) {
     useStore.setState({ site: { ...store.site, pages: updatedPages }, activeSectionId: newSec.id, rightTab: 'edit' })
   }
 
-  const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['components','◈ Blocks']] as const
+  const TABS = [['edit','✏️ Edit'],['theme','🎨 Theme'],['ai','✦ AI'],['suggest','💡 Ideas'],['components','◈ Blocks']] as const
 
   return (
     <div style={{ width:300, background:B.bg, borderLeft:`1px solid ${B.border}`, display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden' }}>
@@ -270,22 +278,9 @@ function RightPanel({ B }: { B: typeof DARK }) {
                   <div key={field.key}>
                     <Label>{field.label}</Label>
                     {val && <img src={val} alt="" style={{ width:'100%', height:80, objectFit:'cover', borderRadius:8, marginBottom:8 }} />}
-                    <input value={val||''} onChange={e=>store.updateSectionData(section.id, field.key, e.target.value)} placeholder="Paste image URL..." style={inp} />
-                    <div style={{ marginTop:6, display:'flex', gap:6 }}>
-                      <input value={imageSearch} onChange={e=>setImageSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchImages()}
-                        placeholder="Search Unsplash..." style={{ ...inp, flex:1 }} />
-                      <Btn color={B.blue} onClick={()=>{ setActiveImageField(field.key); searchImages() }}>Search</Btn>
-                    </div>
-                    {activeImageField===field.key && images.length>0 && (
-                      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:6, marginTop:8 }}>
-                        {images.map((img,i)=>(
-                          <img key={i} src={img.url} alt={img.alt} onClick={()=>{ store.updateSectionData(section.id, field.key, img.url); setImages([]); setActiveImageField(null) }}
-                            style={{ width:'100%', height:56, objectFit:'cover', borderRadius:6, cursor:'pointer', border:`2px solid transparent` }}
-                            onMouseEnter={e=>(e.currentTarget.style.border=`2px solid ${B.green}`)}
-                            onMouseLeave={e=>(e.currentTarget.style.border='2px solid transparent')} />
-                        ))}
-                      </div>
-                    )}
+                    <Btn color={B.blue} full onClick={()=>openImagePicker(url=>store.updateSectionData(section.id, field.key, url))}>🖼️ Browse Image Library</Btn>
+                    <div style={{ fontSize:10, color:B.muted, marginTop:6, marginBottom:4 }}>or paste a URL:</div>
+                    <input value={val||''} onChange={e=>store.updateSectionData(section.id, field.key, e.target.value)} placeholder="https://images.unsplash.com/..." style={inp} />
                   </div>
                 )
                 if (field.type === 'list') return (
@@ -334,6 +329,22 @@ function RightPanel({ B }: { B: typeof DARK }) {
             <div>
               <Label>Tagline</Label>
               <input value={store.site.tagline} onChange={e=>store.setSiteTagline(e.target.value)} style={inp} />
+            </div>
+            <div>
+              <Label>Logo</Label>
+              {store.site.logo && <img src={store.site.logo} alt="logo" style={{ width:64, height:64, objectFit:'contain', borderRadius:8, background:B.surface, padding:6, marginBottom:8, display:'block' }} />}
+              <input type="file" accept="image/*" onChange={e=>{
+                const file = e.target.files?.[0]; if (!file) return
+                if (file.size > 1024 * 1024) { alert('Logo too large (max 1MB).'); return }
+                const reader = new FileReader()
+                reader.onload = () => store.setSiteLogo(String(reader.result))
+                reader.readAsDataURL(file)
+                e.currentTarget.value = ''
+              }}
+              style={{ ...inp, padding:6, fontSize:11 }} />
+              {store.site.logo && (
+                <Btn color='ghost' onClick={()=>store.setSiteLogo('')} style={{ marginTop:6 }}>Remove logo</Btn>
+              )}
             </div>
 
             <div>
@@ -416,15 +427,16 @@ function RightPanel({ B }: { B: typeof DARK }) {
                   <textarea value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)} rows={4}
                     placeholder={`Examples:\n• "Rewrite the headline to be more powerful"\n• "Add 2 more services about cleaning and maintenance"\n• "Make the copy more professional and formal"\n• "Update contact details: phone 071 000 0000"`}
                     style={{ ...inp, resize:'none', lineHeight:1.6 }} />
-                  <Btn color={B.green} full onClick={askAi} disabled={aiLoading} style={{ marginTop:8 }}>
+                  <Btn color={B.green} full onClick={()=>askAi()} disabled={aiLoading} style={{ marginTop:8 }}>
                     {aiLoading ? '⏳ Working...' : '✦ Apply Changes'}
                   </Btn>
                 </div>
+                {aiError && <div style={{ background:'#ef444420', border:'1px solid #ef4444', borderRadius:8, padding:10, fontSize:11, color:'#ef4444' }}>{aiError}</div>}
                 <div style={{ background:B.card, borderRadius:10, padding:12, border:`1px solid ${B.border}` }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Quick actions</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:8 }}>Quick actions (one-click)</div>
                   {['Rewrite all copy to be more compelling','Make tone more professional','Make tone more friendly and casual','Add 2 more items','Shorten all text by 40%'].map(q=>(
-                    <button key={q} onClick={()=>{ setAiPrompt(q); }}
-                      style={{ display:'block', width:'100%', textAlign:'left' as const, padding:'7px 10px', marginBottom:5, borderRadius:7, background:B.surface, border:`1px solid ${B.border}`, color:B.muted, fontSize:11, cursor:'pointer' }}>
+                    <button key={q} disabled={aiLoading} onClick={()=>askAi(q)}
+                      style={{ display:'block', width:'100%', textAlign:'left' as const, padding:'7px 10px', marginBottom:5, borderRadius:7, background:B.surface, border:`1px solid ${B.border}`, color:B.muted, fontSize:11, cursor:aiLoading?'wait':'pointer', opacity:aiLoading?.5:1 }}>
                       → {q}
                     </button>
                   ))}
@@ -433,6 +445,9 @@ function RightPanel({ B }: { B: typeof DARK }) {
             )}
           </div>
         )}
+
+        {/* AI SUGGESTIONS TAB */}
+        {tab==='suggest' && <SuggestPanel B={B} />}
 
         {/* BLOCK LIBRARY TAB */}
         {tab==='components' && (
@@ -473,6 +488,238 @@ function RightPanel({ B }: { B: typeof DARK }) {
         )}
       </div>
     </div>
+  )
+}
+
+// ── AI Suggestions Panel ──────────────────────────────────────
+type Suggestion = {
+  title: string
+  reason: string
+  action: 'add-section' | 'apply-block' | 'replace-section-data' | 'set-theme' | 'edit-page' | 'note'
+  payload?: any
+}
+function SuggestPanel({ B }: { B: typeof DARK }) {
+  const store = useStore()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [items, setItems] = useState<Suggestion[]>([])
+
+  const refresh = async () => {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/suggest', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ site: store.site, activePageId: store.activePageId })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch suggestions')
+      setItems(data.suggestions || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed')
+    }
+    setLoading(false)
+  }
+
+  const apply = (s: Suggestion) => {
+    const page = getActivePage(store)
+    if (!page) return
+    if (s.action === 'add-section' && s.payload?.type) {
+      store.addSection(s.payload.type as SectionType)
+    } else if (s.action === 'replace-section-data' && s.payload?.sectionId && s.payload?.data) {
+      const sec = page.sections.find(x => x.id === s.payload.sectionId)
+      if (sec) store.setSectionData(sec.id, { ...sec.data, ...s.payload.data })
+    } else if (s.action === 'set-theme' && s.payload) {
+      store.setTheme(s.payload)
+    } else if (s.action === 'apply-block' && s.payload?.blockId) {
+      const b = BLOCKS.find(x => x.id === s.payload.blockId)
+      if (b) {
+        const newSec = { id: uuid(), type: b.type, data: { ...b.data } }
+        const updatedPages = store.site.pages.map(p => p.id === page.id ? { ...p, sections: [...p.sections, newSec] } : p)
+        useStore.setState({ site: { ...store.site, pages: updatedPages }, activeSectionId: newSec.id, rightTab: 'edit' })
+      }
+    }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ fontSize:13, fontWeight:800 }}>💡 AI Ideas</div>
+      <div style={{ fontSize:11, color:B.muted, lineHeight:1.6 }}>
+        AI looks at your current site and suggests what to improve next — add sections, swap copy, fix tone. Click Apply on any idea.
+      </div>
+      <button onClick={refresh} disabled={loading}
+        style={{ padding:'10px', borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:loading?'wait':'pointer' }}>
+        {loading ? '⏳ Analyzing your site...' : '✦ Get fresh ideas'}
+      </button>
+      {error && <div style={{ background:'#ef444420', border:'1px solid #ef4444', borderRadius:8, padding:10, fontSize:11, color:'#ef4444' }}>{error}</div>}
+      {items.length === 0 && !loading && !error && (
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:14, fontSize:11, color:B.muted, lineHeight:1.6 }}>
+          No suggestions yet. Click the button above to have AI review your site.
+        </div>
+      )}
+      {items.map((s, i) => (
+        <div key={i} style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:12 }}>
+          <div style={{ fontSize:12, fontWeight:800, marginBottom:5 }}>{s.title}</div>
+          <div style={{ fontSize:11, color:B.muted, lineHeight:1.6, marginBottom:10 }}>{s.reason}</div>
+          {s.action !== 'note' && s.action !== 'edit-page' && (
+            <button onClick={()=>apply(s)} style={{ fontSize:11, padding:'6px 12px', borderRadius:7, background:B.green, color:B.bg, border:'none', fontWeight:700, cursor:'pointer' }}>
+              Apply
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Image Picker Modal ────────────────────────────────────────
+function ImagePickerModal({ B, onClose, onSelect }: { B: typeof DARK; onClose: () => void; onSelect: (url: string) => void }) {
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<string>('All')
+  const [pasteUrl, setPasteUrl] = useState('')
+
+  const results: LibraryImage[] = searchImages(query, category)
+
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      onClick={onClose}>
+      <motion.div initial={{ scale:.96 }} animate={{ scale:1 }}
+        onClick={e=>e.stopPropagation()}
+        style={{ background:B.surface, borderRadius:16, padding:20, width:780, maxWidth:'100%', maxHeight:'88vh', overflowY:'auto', border:`1px solid ${B.border}`, display:'flex', flexDirection:'column', gap:12 }}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontSize:18, fontWeight:900 }}>🖼️ Image Library</div>
+            <div style={{ fontSize:11, color:B.muted, marginTop:2 }}>{IMAGES.length} curated stock photos. Click any to use.</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:22 }}>✕</button>
+        </div>
+
+        <input value={query} onChange={e=>setQuery(e.target.value)}
+          placeholder="Search by keyword (e.g. plumbing, restaurant, office, gym)..."
+          style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding:'10px 14px', color:B.text, fontSize:13, outline:'none' }} />
+
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+          {IMAGE_CATEGORIES.map(c => (
+            <button key={c} onClick={()=>setCategory(c)}
+              style={{ padding:'4px 10px', borderRadius:999, background:category===c?B.green:B.card, color:category===c?B.bg:B.muted, border:`1px solid ${category===c?B.green:B.border}`, fontSize:10, fontWeight:700, cursor:'pointer' }}>
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:8 }}>
+          {results.map(img => (
+            <div key={img.id}
+              onClick={()=>{ onSelect(img.url); onClose() }}
+              style={{ position:'relative', cursor:'pointer', borderRadius:8, overflow:'hidden', aspectRatio:'4/3', background:B.card, border:`2px solid transparent` }}
+              onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.borderColor = B.green}}
+              onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'}}>
+              <img src={img.thumb} alt={img.alt} loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'linear-gradient(transparent,rgba(0,0,0,.8))', color:'#fff', fontSize:10, padding:'14px 8px 6px', fontWeight:600 }}>
+                {img.alt}
+              </div>
+            </div>
+          ))}
+          {results.length === 0 && (
+            <div style={{ gridColumn:'1/-1', padding:'32px', textAlign:'center', color:B.muted, fontSize:12 }}>
+              No images match your search. Try different keywords or paste a URL below.
+            </div>
+          )}
+        </div>
+
+        <div style={{ borderTop:`1px solid ${B.border}`, paddingTop:14, marginTop:4 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>Or paste any image URL</div>
+          <div style={{ display:'flex', gap:6 }}>
+            <input value={pasteUrl} onChange={e=>setPasteUrl(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              style={{ flex:1, background:B.card, border:`1px solid ${B.border}`, borderRadius:8, padding:'9px 12px', color:B.text, fontSize:12, outline:'none' }} />
+            <button onClick={()=>{ if (pasteUrl.trim()) { onSelect(pasteUrl.trim()); onClose() } }}
+              disabled={!pasteUrl.trim()}
+              style={{ padding:'0 14px', borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:'pointer', opacity:pasteUrl.trim()?1:.4 }}>
+              Use URL
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ── Welcome Modal (first-time experience) ─────────────────────
+function WelcomeModal({ B, onMagicBuild, onClose }: { B: typeof DARK; onMagicBuild: () => void; onClose: () => void }) {
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.92)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <motion.div initial={{ scale:.94 }} animate={{ scale:1 }}
+        style={{ background:B.surface, borderRadius:18, padding:36, width:540, maxWidth:'100%', textAlign:'center' as const, border:`1px solid ${B.border}` }}>
+        <div style={{ width:56, height:56, borderRadius:14, background:`linear-gradient(135deg,${B.green},${B.blue})`, margin:'0 auto 18px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, fontWeight:900, color:B.bg }}>S</div>
+        <div style={{ fontSize:24, fontWeight:900, marginBottom:10, letterSpacing:'-0.5px' }}>Welcome to SiteForge</div>
+        <div style={{ fontSize:14, color:B.muted, lineHeight:1.7, marginBottom:26 }}>
+          Build a real, professional website in minutes. Click anything in the preview to edit. Use ✨ Magic Build to have AI generate a complete site for you.
+        </div>
+        <div style={{ display:'flex', gap:10, flexDirection:'column' }}>
+          <button onClick={onMagicBuild}
+            style={{ padding:'14px', borderRadius:10, background:B.green, color:B.bg, fontSize:14, fontWeight:900, border:'none', cursor:'pointer' }}>
+            ✨ Generate my website with AI
+          </button>
+          <button onClick={onClose}
+            style={{ padding:'12px', borderRadius:10, background:'transparent', color:B.muted, fontSize:12, fontWeight:700, border:`1px solid ${B.border}`, cursor:'pointer' }}>
+            Start with the default template
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ── Deploy Modal (post-ZIP download) ──────────────────────────
+function DeployModal({ B, onClose, siteName }: { B: typeof DARK; onClose: () => void; siteName: string }) {
+  const safeName = siteName.toLowerCase().replace(/\s+/g,'-')
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      onClick={onClose}>
+      <motion.div initial={{ scale:.95 }} animate={{ scale:1 }} onClick={e=>e.stopPropagation()}
+        style={{ background:B.surface, borderRadius:16, padding:28, width:560, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', border:`1px solid ${B.border}` }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
+          <div>
+            <div style={{ fontSize:20, fontWeight:900 }}>↓ Your site is downloaded</div>
+            <div style={{ fontSize:12, color:B.muted, marginTop:4 }}>Now publish it for free in 60 seconds.</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:B.muted, cursor:'pointer', fontSize:22 }}>✕</button>
+        </div>
+
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:18, marginBottom:14 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:B.green, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Recommended · No signup</div>
+          <div style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>1. Open Netlify Drop</div>
+          <div style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginBottom:12 }}>
+            Drag the unzipped <strong style={{ color:B.text }}>{safeName}-website</strong> folder onto the Netlify Drop page. You'll get a live URL like <code style={{ background:B.surface, padding:'1px 6px', borderRadius:4 }}>{safeName}.netlify.app</code> instantly.
+          </div>
+          <a href="https://app.netlify.com/drop" target="_blank" rel="noreferrer"
+            style={{ display:'inline-block', padding:'10px 18px', borderRadius:8, background:B.green, color:B.bg, fontSize:13, fontWeight:800, textDecoration:'none' }}>
+            Open Netlify Drop →
+          </a>
+        </div>
+
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:18, marginBottom:14 }}>
+          <div style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>2. Connect a custom domain (optional)</div>
+          <div style={{ fontSize:12, color:B.muted, lineHeight:1.6 }}>
+            In Netlify, go to <strong style={{ color:B.text }}>Site settings → Domain management</strong> and add your domain (e.g. yourbusiness.co.za). Netlify gives you the DNS records to add at your registrar.
+          </div>
+        </div>
+
+        <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:12, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>3. Updating your site later</div>
+          <div style={{ fontSize:12, color:B.muted, lineHeight:1.6 }}>
+            Come back to SiteForge anytime — your project is auto-saved in this browser. Make changes, click <strong style={{ color:B.text }}>↓ Download ZIP</strong> again, then drag the new folder onto your Netlify site under <strong style={{ color:B.text }}>Deploys</strong>. The site updates in seconds.
+          </div>
+          <div style={{ fontSize:11, color:B.muted, marginTop:10, lineHeight:1.6 }}>
+            Tip: Use <strong style={{ color:B.text }}>↓ Save Project</strong> in the top bar to export a backup file you can re-import on any computer.
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -881,18 +1128,35 @@ export default function App() {
   const [exporting, setExporting] = useState(false)
   const [showMagic, setShowMagic] = useState(false)
   const [showEditPage, setShowEditPage] = useState(false)
+  const [showDeploy, setShowDeploy] = useState(false)
+  const [imagePicker, setImagePicker] = useState<null | { onSelect: (url: string) => void }>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Welcome shown once for first-time visitors (default site name still 'Your Business' & no localStorage edits).
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try {
+      return !localStorage.getItem('siteforge-v2') || store.site.name === 'Your Business'
+    } catch { return false }
+  })
+
+  const openImagePicker = (onSelect: (url: string) => void) => setImagePicker({ onSelect })
 
   const downloadSite = async () => {
     setExporting(true)
-    const files = exportSite(store.site)
-    const zip = new JSZip()
-    Object.entries(files).forEach(([name, content]) => zip.file(name, content))
-    zip.file('README.md', `# ${store.site.name}\n\nBuilt with SiteForge.\n\nFiles:\n${Object.keys(files).map(f=>`- ${f}`).join('\n')}\n\nDeploy: Drag folder to Netlify Drop at netlify.com/drop`)
-    const blob = await zip.generateAsync({ type:'blob' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `${store.site.name.toLowerCase().replace(/\s+/g,'-')}-website.zip`
-    a.click()
+    try {
+      const files = exportSite(store.site)
+      const zip = new JSZip()
+      Object.entries(files).forEach(([name, content]) => zip.file(name, content))
+      zip.file('README.md', `# ${store.site.name}\n\nBuilt with SiteForge.\n\n## Quick deploy (free)\n1. Unzip this folder.\n2. Go to https://app.netlify.com/drop\n3. Drag the unzipped folder onto the page.\n4. Done — Netlify gives you an instant URL.\n\n## Updating later\nReturn to SiteForge, edit, click "↓ Download ZIP" again, then drag the new folder onto your Netlify site under "Deploys".\n\nFiles:\n${Object.keys(files).map(f=>`- ${f}`).join('\n')}`)
+      const blob = await zip.generateAsync({ type:'blob' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${store.site.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'site'}-website.zip`
+      a.click()
+      setShowDeploy(true)
+    } catch (err) {
+      alert('Download failed: ' + (err instanceof Error ? err.message : 'unknown'))
+    }
     setExporting(false)
   }
 
@@ -905,51 +1169,85 @@ export default function App() {
     w?.document.close()
   }
 
+  const saveProject = () => {
+    const data = JSON.stringify(store.site, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    const safe = store.site.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'site'
+    a.download = `${safe}.siteforge.json`
+    a.click()
+  }
+
+  const loadProject = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const site = JSON.parse(String(reader.result))
+        if (!site || !Array.isArray(site.pages)) throw new Error('Invalid project file')
+        store.loadSite(site)
+      } catch (err) {
+        alert('Could not load project: ' + (err instanceof Error ? err.message : 'invalid file'))
+      }
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:B.bg, color:B.text, fontFamily:"'Inter',system-ui,sans-serif", overflow:'hidden' }}>
 
       {/* TOP BAR */}
-      <div style={{ display:'flex', alignItems:'center', padding:'0 16px', height:52, borderBottom:`1px solid ${B.border}`, flexShrink:0, gap:12 }}>
-        <div style={{ width:28, height:28, borderRadius:8, background:B.green, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:B.bg }}>S</div>
+      <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', minHeight:52, borderBottom:`1px solid ${B.border}`, flexShrink:0, gap:8, flexWrap:'wrap' }}>
+        <div style={{ width:28, height:28, borderRadius:8, background:B.green, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:B.bg, flexShrink:0 }}>S</div>
         <div style={{ flexShrink:0 }}>
           <div style={{ fontSize:13, fontWeight:800 }}>SiteForge</div>
           <div style={{ fontSize:9, color:B.muted }}>Website Builder</div>
         </div>
-        <div style={{ flex:1 }} />
-        <div style={{ fontSize:12, color:B.muted }}>
-          Editing: <strong style={{ color:B.text }}>{store.site.name}</strong>
+        <div style={{ flex:1, minWidth:8 }} />
+        <div style={{ fontSize:11, color:B.muted, marginRight:4, whiteSpace:'nowrap' as const }}>
+          <strong style={{ color:B.text }}>{store.site.name}</strong>
         </div>
+        <input ref={fileInputRef} type="file" accept=".json,application/json" style={{ display:'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) loadProject(f); e.currentTarget.value = '' }} />
+        <button title="Load .siteforge.json" onClick={()=>fileInputRef.current?.click()}
+          style={{ padding:'0 10px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+          ↑ Load
+        </button>
+        <button title="Save project as JSON" onClick={saveProject}
+          style={{ padding:'0 10px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+          💾 Save
+        </button>
         <button onClick={()=>{
-          if (confirm('Start over? This will reset your current site to the default template.')) {
+          if (confirm('Start over? This will reset your current site to the default template. Save your project first if you want to keep it.')) {
             localStorage.removeItem('siteforge-v2')
             window.location.reload()
           }
-        }} style={{ padding:'0 12px', height:34, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+        }} style={{ padding:'0 10px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
           ↻ Reset
         </button>
         <button onClick={()=>setShowMagic(true)}
-          style={{ padding:'0 14px', height:34, borderRadius:8, background:`linear-gradient(135deg, ${B.green}, ${B.blue})`, color:'#fff', fontSize:12, fontWeight:800, border:'none', cursor:'pointer' }}>
+          style={{ padding:'0 12px', height:32, borderRadius:7, background:`linear-gradient(135deg, ${B.green}, ${B.blue})`, color:'#fff', fontSize:12, fontWeight:800, border:'none', cursor:'pointer' }}>
           ✨ Magic Build
         </button>
-        <button onClick={()=>setDarkMode(d=>!d)}
-          style={{ width:34, height:34, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <button onClick={()=>setDarkMode(d=>!d)} title="Toggle editor theme"
+          style={{ width:32, height:32, borderRadius:7, border:`1px solid ${B.border}`, background:'transparent', color:B.text, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           {darkMode?'☀️':'🌙'}
         </button>
         <button onClick={previewFull}
-          style={{ padding:'0 14px', height:34, borderRadius:8, border:`1px solid ${B.border}`, background:B.card, color:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          style={{ padding:'0 12px', height:32, borderRadius:7, border:`1px solid ${B.border}`, background:B.card, color:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
           ⛶ Preview
         </button>
         <button onClick={downloadSite} disabled={exporting}
-          style={{ padding:'0 16px', height:34, borderRadius:8, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:'pointer', opacity:exporting?.6:1 }}>
-          {exporting ? '⏳...' : '↓ Download ZIP'}
+          style={{ padding:'0 14px', height:32, borderRadius:7, background:B.green, color:B.bg, fontSize:12, fontWeight:800, border:'none', cursor:'pointer', opacity:exporting?.6:1 }}>
+          {exporting ? '⏳...' : '↓ Download & Deploy'}
         </button>
       </div>
 
       {/* BODY */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+      <div className="sf-body" style={{ flex:1, display:'flex', overflow:'hidden' }}>
         <LeftPanel B={B} />
-        <SiteCanvas B={B} onMagicEdit={()=>setShowEditPage(true)} />
-        <RightPanel B={B} />
+        <SiteCanvas B={B} onMagicEdit={()=>setShowEditPage(true)} openImagePicker={openImagePicker} />
+        <RightPanel B={B} openImagePicker={openImagePicker} />
       </div>
 
       {/* ADD SECTION MODAL */}
@@ -965,6 +1263,25 @@ export default function App() {
       {/* MAGIC EDIT PAGE MODAL */}
       <AnimatePresence>
         {showEditPage && <MagicEditPageModal B={B} onClose={()=>setShowEditPage(false)} />}
+      </AnimatePresence>
+
+      {/* IMAGE PICKER MODAL */}
+      <AnimatePresence>
+        {imagePicker && <ImagePickerModal B={B}
+          onClose={()=>setImagePicker(null)}
+          onSelect={url=>{ imagePicker.onSelect(url); setImagePicker(null) }} />}
+      </AnimatePresence>
+
+      {/* DEPLOY MODAL */}
+      <AnimatePresence>
+        {showDeploy && <DeployModal B={B} onClose={()=>setShowDeploy(false)} siteName={store.site.name} />}
+      </AnimatePresence>
+
+      {/* WELCOME */}
+      <AnimatePresence>
+        {showWelcome && <WelcomeModal B={B}
+          onMagicBuild={()=>{ setShowWelcome(false); setShowMagic(true) }}
+          onClose={()=>setShowWelcome(false)} />}
       </AnimatePresence>
     </div>
   )

@@ -1043,6 +1043,68 @@ export function renderPage(site: SiteData, page: Page, interactive = false): str
 </html>`
 }
 
+/**
+ * Build a self-contained HTML doc that previews every page of the site in one
+ * tab. Cross-page links work via an iframe wrapper that intercepts clicks on
+ * `*.html` hrefs and swaps srcdoc instead of navigating the browser.
+ */
+export function renderPreviewBundle(site: SiteData, activePageId?: string): string {
+  const filenames = site.pages.map(p => p.slug === '/' ? 'index.html' : p.slug.slice(1) + '.html')
+  const htmls = site.pages.map(p => renderPage(site, p, false))
+  const map: Record<string, string> = {}
+  filenames.forEach((fn, i) => { map[fn] = htmls[i] })
+  const startIdx = activePageId ? site.pages.findIndex(p => p.id === activePageId) : 0
+  const startFile = filenames[startIdx >= 0 ? startIdx : 0]
+
+  const FILES_JSON = JSON.stringify(map)
+  const START_JSON = JSON.stringify(startFile)
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${site.name} — Preview</title>
+  <style>html,body{margin:0;padding:0;height:100%;background:#000}iframe{width:100%;height:100vh;border:none;display:block}</style>
+</head>
+<body>
+<iframe id="sf-prev" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+<script>
+const FILES = ${FILES_JSON};
+const frame = document.getElementById('sf-prev');
+function show(filename) {
+  const html = FILES[filename];
+  if (!html) return;
+  frame.srcdoc = html;
+}
+frame.addEventListener('load', function(){
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    doc.title = filename_for_doc(doc);
+    doc.querySelectorAll('a').forEach(function(a){
+      const href = a.getAttribute('href') || '';
+      // Hash-only link → leave alone (smooth scroll).
+      if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('https://') || href.startsWith('http://')) return;
+      // Relative link to a known page file → intercept and swap.
+      const cleaned = href.replace(/^\\.\\//,'').replace(/^\\//,'');
+      if (FILES[cleaned]) {
+        a.addEventListener('click', function(e){
+          e.preventDefault();
+          show(cleaned);
+          // Update the visible top tab title for the user.
+          if (parent && parent !== window) parent.document.title = cleaned;
+        });
+      }
+    });
+  } catch (err) { console.warn('preview link wiring failed', err) }
+});
+function filename_for_doc(doc){ try { return doc.title } catch { return 'Preview' } }
+show(${START_JSON});
+</script>
+</body></html>`
+}
+
 export function exportSite(site: SiteData): Record<string, string> {
   const files: Record<string, string> = {}
   site.pages.forEach(page => {

@@ -4,7 +4,7 @@ import JSZip from 'jszip'
 import { useStore, getActivePage, getActiveSection, undo, redo } from './store'
 import { SECTION_DEFS, SECTION_GROUPS } from './sections'
 import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
-import { exportSite, renderPage } from './renderer'
+import { exportSite, renderPage, renderPreviewBundle } from './renderer'
 import { IMAGES, IMAGE_CATEGORIES, searchImages, type LibraryImage } from './imageLibrary'
 import { COUNTRY_LIST, COUNTRIES, DEFAULT_COUNTRY, type CountryCode } from './locale/profiles'
 import { PERSONAS, PERSONA_LIST, pickPersona, type PersonaId } from './personas'
@@ -102,7 +102,12 @@ function SiteCanvas({ B, onMagicEdit, openImagePicker }: { B: typeof DARK; onMag
             style={{ fontSize:11, padding:'5px 12px', borderRadius:7, background:B.green, border:'none', color:B.bg, fontWeight:800, cursor:'pointer' }}>
             ✨ Magic Edit Page
           </button>
-          <button onClick={()=>{ const w=window.open('','_blank'); w?.document.write(exportHtml); w?.document.close() }}
+          <button onClick={()=>{
+              const html = renderPreviewBundle(store.site, store.activePageId)
+              const w = window.open('','_blank')
+              if (!w) { alert('Pop-up blocked. Allow pop-ups for this site to use Full Tab.'); return }
+              w.document.write(html); w.document.close()
+            }}
             style={{ fontSize:11, padding:'5px 12px', borderRadius:7, background:B.card, border:`1px solid ${B.border}`, color:B.muted, cursor:'pointer' }}>
             ⛶ Full Tab
           </button>
@@ -1495,12 +1500,15 @@ export default function App() {
   }
 
   const previewFull = () => {
-    const page = getActivePage(store)
-    if (!page) return
-    const html = renderPage(store.site, page, false)
+    // Open a multi-page preview where cross-page links work in-tab. We bundle
+    // every page into one HTML doc + an iframe wrapper that intercepts link
+    // clicks (they used to 404 because relative .html paths were resolved
+    // against the Vercel domain).
+    const html = renderPreviewBundle(store.site, store.activePageId)
     const w = window.open('', '_blank')
-    w?.document.write(html)
-    w?.document.close()
+    if (!w) { alert('Pop-up blocked. Allow pop-ups for this site to use Preview.'); return }
+    w.document.write(html)
+    w.document.close()
   }
 
   const saveProject = () => {

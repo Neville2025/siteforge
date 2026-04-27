@@ -34,11 +34,8 @@ function css(theme: Theme) {
     .mobile-menu.open{display:flex}
     .mobile-menu a{font-size:16px;font-weight:600;color:inherit;padding:8px 0;border-bottom:1px solid ${theme.style==='dark'?'#222':'#f0f0f0'}}
     @media(max-width:768px){.nav-links{display:none}.hamburger{display:flex}}
-    /* AOS — content visible by default; AOS adds animation if available */
-    [data-aos]{transition:opacity .8s,transform .8s}
-    .aos-init[data-aos]{opacity:0}
-    .aos-init[data-aos="fade-up"]{transform:translateY(30px)}
-    [data-aos].aos-animate{opacity:1;transform:none}
+    /* Content always visible. AOS attribute kept for export compatibility but no hiding. */
+    [data-aos]{opacity:1 !important;transform:none !important}
   `
 }
 

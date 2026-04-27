@@ -225,7 +225,7 @@ export const useStore = create<BuilderState>()(
         set({ site: fixed, activePageId: fixed.pages[0]?.id || '', activeSectionId: null })
       },
     }),
-    { name: 'siteforge-v1' }
+    { name: 'siteforge-v2' }
   )
 )
 

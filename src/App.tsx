@@ -792,6 +792,14 @@ export default function App() {
         <div style={{ fontSize:12, color:B.muted }}>
           Editing: <strong style={{ color:B.text }}>{store.site.name}</strong>
         </div>
+        <button onClick={()=>{
+          if (confirm('Start over? This will reset your current site to the default template.')) {
+            localStorage.removeItem('siteforge-v2')
+            window.location.reload()
+          }
+        }} style={{ padding:'0 12px', height:34, borderRadius:8, border:`1px solid ${B.border}`, background:'transparent', color:B.muted, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+          ↻ Reset
+        </button>
         <button onClick={()=>setShowMagic(true)}
           style={{ padding:'0 14px', height:34, borderRadius:8, background:`linear-gradient(135deg, ${B.green}, ${B.blue})`, color:'#fff', fontSize:12, fontWeight:800, border:'none', cursor:'pointer' }}>
           ✨ Magic Build

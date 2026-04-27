@@ -83,7 +83,6 @@ function SiteCanvas({ B, onMagicEdit, openImagePicker }: { B: typeof DARK; onMag
 
   if (!page) return null
   const html = renderPage(store.site, page, true)
-  const exportHtml = renderPage(store.site, page, false)
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', background:B.surface, overflow:'hidden' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'8px 16px', borderBottom:`1px solid ${B.border}`, background:B.bg, flexShrink:0 }}>

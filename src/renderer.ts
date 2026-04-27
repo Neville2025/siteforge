@@ -1,4 +1,44 @@
 import type { SiteData, Page, Section, Theme } from './types'
+import { COUNTRIES, DEFAULT_COUNTRY, phoneToTelLink, phoneToWhatsApp, type CountryCode } from './locale/profiles'
+import { generatePrivacyPolicy } from './locale/privacyPolicy'
+
+function getProfile(site: SiteData) {
+  const code = (site.country as CountryCode) || DEFAULT_COUNTRY
+  return COUNTRIES[code] || COUNTRIES[DEFAULT_COUNTRY]
+}
+
+function escapeHtml(s: string): string {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+// Tiny, safe Markdown→HTML for auto-generated privacy text. Headings, bold,
+// paragraphs, lists. Not a general-purpose renderer.
+function renderMarkdown(md: string): string {
+  const lines = md.split('\n')
+  let html = ''
+  let inList = false
+  for (const raw of lines) {
+    const line = raw.trimEnd()
+    if (line.startsWith('## ')) {
+      if (inList) { html += '</ul>'; inList = false }
+      html += `<h3 style="margin-top:24px;font-size:18px;font-weight:800">${escapeHtml(line.slice(3))}</h3>`
+    } else if (line.startsWith('# ')) {
+      if (inList) { html += '</ul>'; inList = false }
+      html += `<h2 style="margin-top:8px;font-size:24px;font-weight:900">${escapeHtml(line.slice(2))}</h2>`
+    } else if (line.startsWith('- ')) {
+      if (!inList) { html += '<ul style="padding-left:20px;margin:8px 0">'; inList = true }
+      html += `<li style="margin:4px 0">${escapeHtml(line.slice(2)).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</li>`
+    } else if (line === '') {
+      if (inList) { html += '</ul>'; inList = false }
+      html += '<div style="height:8px"></div>'
+    } else {
+      if (inList) { html += '</ul>'; inList = false }
+      html += `<p style="margin:8px 0;line-height:1.7">${escapeHtml(line).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`
+    }
+  }
+  if (inList) html += '</ul>'
+  return html
+}
 
 function css(theme: Theme) {
   const rMap = { none:'0px', small:'4px', medium:'10px', large:'20px', pill:'999px' }
@@ -77,11 +117,12 @@ function wrapSection(secId: string, html: string): string {
   return html.replace(/^(<section)/, `<section data-section-id="${secId}"`)
 }
 
-function renderSection(sec: Section, theme: Theme): string {
+function renderSection(sec: Section, theme: Theme, site: SiteData): string {
   const d = sec.data
   const dark = theme.style === 'dark'
   const cardBg = dark ? '#1a1a1a' : '#f8f9fa'
   const cardBorder = dark ? '1px solid #2a2a2a' : '1px solid #e5e7eb'
+  const profile = getProfile(site)
 
   if (sec.type === 'custom21st') return `<section style="padding:60px 0">${d.html||''}</section>`
 
@@ -224,14 +265,15 @@ function renderSection(sec: Section, theme: Theme): string {
       <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
       <p class="section-sub" data-sf-field="subheading" style="margin:0 auto">${d.subheading}</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+    <div class="sf-grid-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       ${(d.items||[]).map((p: any, i: number) => `
       <div data-aos="fade-up" data-aos-delay="${i*100}" style="background:${p.highlighted?'var(--primary)':cardBg};border:${p.highlighted?'none':cardBorder};border-radius:var(--radius);padding:36px;position:relative;${p.highlighted?'transform:scale(1.02);box-shadow:0 20px 60px rgba(0,0,0,.2)':''}">
         ${p.highlighted?`<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--secondary);color:#fff;font-size:11px;font-weight:800;padding:4px 14px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em">Most Popular</div>`:''}
         <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;color:${p.highlighted?'rgba(255,255,255,.8)':dark?'#999':'#888'}">${p.name}</div>
         <div style="font-size:42px;font-weight:900;margin-bottom:4px;color:${p.highlighted?'#fff':'inherit'}">${p.price}</div>
-        <div style="font-size:13px;color:${p.highlighted?'rgba(255,255,255,.7)':dark?'#777':'#999'};margin-bottom:28px">${p.period}</div>
-        <div style="margin-bottom:28px">${(p.features||[]).map((f: string)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:${p.highlighted?'rgba(255,255,255,.9)':dark?'#ccc':'#444'}"><span style="color:${p.highlighted?'#fff':'var(--primary)'};font-weight:700">✓</span>${f}</div>`).join('')}</div>
+        <div style="font-size:13px;color:${p.highlighted?'rgba(255,255,255,.7)':dark?'#777':'#999'};margin-bottom:6px">${p.period||''}</div>
+        ${profile.taxLabel !== 'none' ? `<div style="font-size:11px;color:${p.highlighted?'rgba(255,255,255,.65)':dark?'#666':'#aaa'};margin-bottom:22px;font-weight:600">${d.taxIncluded?`incl. ${profile.taxLabel}`:`excl. ${profile.taxLabel}`}</div>` : `<div style="margin-bottom:22px"></div>`}
+        <div style="margin-bottom:28px">${(p.features||[]).map((f: string)=>`<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;font-size:14px;color:${p.highlighted?'rgba(255,255,255,.9)':dark?'#ccc':'#444'}"><span style="color:${p.highlighted?'#fff':'var(--primary)'};font-weight:700;flex-shrink:0">✓</span>${f}</div>`).join('')}</div>
         <a href="#contact" class="btn" style="width:100%;text-align:center;display:block;${p.highlighted?'background:#fff;color:var(--primary)':'background:var(--primary);color:#fff'}">${p.cta}</a>
       </div>`).join('')}
     </div>
@@ -298,8 +340,8 @@ function renderSection(sec: Section, theme: Theme): string {
         <h2 class="section-heading" data-sf-field="heading">${d.heading}</h2>
         <p data-sf-field="subtext" style="font-size:16px;color:${dark?'#bbb':'#666'};line-height:1.75;margin-bottom:32px">${d.subtext}</p>
         <div style="display:flex;flex-direction:column;gap:16px">
-          ${d.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📞</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Phone</div><div data-sf-field="phone" style="font-weight:600">${d.phone}</div></div></div>`:''}
-          ${d.email?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📧</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Email</div><div data-sf-field="email" style="font-weight:600">${d.email}</div></div></div>`:''}
+          ${d.phone?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📞</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Phone</div><a href="${phoneToTelLink(d.phone, profile)}" style="color:inherit;text-decoration:none"><div data-sf-field="phone" style="font-weight:600">${d.phone}</div></a></div></div>`:''}
+          ${d.email?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📧</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Email</div><a href="mailto:${d.email}" style="color:inherit;text-decoration:none"><div data-sf-field="email" style="font-weight:600">${d.email}</div></a></div></div>`:''}
           ${d.address?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📍</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Address</div><div data-sf-field="address" style="font-weight:600">${d.address}</div></div></div>`:''}
           ${d.hours?`<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:var(--radius);background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🕐</div><div><div style="font-size:12px;color:${dark?'#888':'#999'};margin-bottom:2px">Hours</div><div data-sf-field="hours" style="font-weight:600">${d.hours}</div></div></div>`:''}
         </div>
@@ -326,6 +368,113 @@ function renderSection(sec: Section, theme: Theme): string {
     </div>
   </div>
 </section>`
+
+    case 'whatsapp': {
+      const wa = phoneToWhatsApp(d.number||'', profile)
+      const msg = encodeURIComponent(d.message||'')
+      const link = wa ? `https://wa.me/${wa}${msg?`?text=${msg}`:''}` : '#'
+      return `
+<section style="padding:80px 0;background:${dark?'#0d1f15':'#e7f7ee'}">
+  <div class="container">
+    <div style="max-width:560px;margin:0 auto;text-align:center" data-aos="fade-up">
+      <div style="font-size:48px;margin-bottom:16px">💬</div>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading||'Chat with us on WhatsApp'}</h2>
+      <p style="font-size:15px;color:${dark?'#bbb':'#444'};line-height:1.7;margin:12px 0 28px" data-sf-field="subtext">${d.subtext||''}</p>
+      <a href="${link}" target="_blank" rel="noopener" class="btn" style="background:#25D366;color:#fff;padding:14px 32px;font-size:15px;display:inline-flex;align-items:center;gap:10px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.821 11.821 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.687-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.512 5.26l-.999 3.648 3.976-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+        ${d.buttonText||'Open WhatsApp'}
+      </a>
+    </div>
+  </div>
+</section>`
+    }
+
+    case 'banking': return `
+<section style="padding:80px 0">
+  <div class="container" style="max-width:760px">
+    <div data-aos="fade-up">
+      <div class="section-label">Payment</div>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading||'Banking Details'}</h2>
+      <p style="font-size:15px;color:${dark?'#bbb':'#555'};line-height:1.7;margin-bottom:28px" data-sf-field="subtext">${d.subtext||''}</p>
+    </div>
+    <div data-aos="fade-up" data-aos-delay="100" style="background:${cardBg};border:${cardBorder};border-radius:var(--radius);padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:18px" class="sf-grid-2">
+      ${[
+        ['Account name', d.accountName],
+        ['Bank', d.bank],
+        ['Account number', d.accountNumber],
+        ['Branch / IFSC / Sort code', d.branchCode],
+        ['Reference', d.reference],
+      ].filter(([,v])=>v).map(([label,val])=>`
+        <div>
+          <div style="font-size:11px;color:${dark?'#888':'#999'};font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${label}</div>
+          <div style="font-size:15px;font-weight:600;font-family:monospace;word-break:break-all">${val}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${d.extra?`<div data-aos="fade-up" data-aos-delay="150" style="margin-top:14px;padding:18px;background:${cardBg};border:${cardBorder};border-radius:var(--radius)">
+      <div style="font-size:11px;color:${dark?'#888':'#999'};font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Other payment options</div>
+      ${String(d.extra).split('\n').filter(Boolean).map(l=>`<div style="font-size:14px;line-height:1.7">${escapeHtml(l)}</div>`).join('')}
+    </div>`:''}
+  </div>
+</section>`
+
+    case 'policy': {
+      const body = d.autoGenerate
+        ? generatePrivacyPolicy({
+            businessName: site.name,
+            email: site.pages.flatMap(p=>p.sections).find(s=>s.type==='contact')?.data?.email || '',
+            address: site.pages.flatMap(p=>p.sections).find(s=>s.type==='contact')?.data?.address || '',
+            country: profile,
+          })
+        : (d.customBody || '')
+      return `
+<section style="padding:80px 0">
+  <div class="container" style="max-width:760px">
+    <div data-aos="fade-up">
+      <h2 class="section-heading" data-sf-field="heading" style="margin-bottom:24px">${d.heading||'Privacy Policy'}</h2>
+      <div style="font-size:14px;color:${dark?'#ccc':'#444'};line-height:1.7">${renderMarkdown(body)}</div>
+    </div>
+  </div>
+</section>`
+    }
+
+    case 'maps': {
+      const src = d.embedUrl || (d.address ? `https://www.google.com/maps?q=${encodeURIComponent(d.address)}&output=embed` : '')
+      return `
+<section style="padding:80px 0;background:${dark?'#111':'#f9fafb'}">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:32px" data-aos="fade-up">
+      <div class="section-label">Location</div>
+      <h2 class="section-heading" data-sf-field="heading">${d.heading||'Find Us'}</h2>
+      ${d.subtext?`<p class="section-sub" data-sf-field="subtext" style="margin:0 auto">${d.subtext}</p>`:''}
+    </div>
+    ${src ? `<div data-aos="fade-up" data-aos-delay="100" style="border-radius:var(--radius);overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.1)">
+      <iframe src="${src}" width="100%" height="420" style="border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </div>` : `<div style="padding:48px;text-align:center;color:${dark?'#888':'#888'};border:2px dashed ${dark?'#333':'#ddd'};border-radius:var(--radius)">Add an address to show the map.</div>`}
+  </div>
+</section>`
+    }
+
+    case 'newsletter': {
+      const action = d.provider === 'web3forms' ? 'https://api.web3forms.com/submit'
+        : d.provider === 'formsubmit' ? `https://formsubmit.co/${encodeURIComponent(d.endpoint||'')}`
+        : d.provider === 'mailto' ? `mailto:${d.endpoint||''}`
+        : d.endpoint || '#'
+      return `
+<section style="padding:80px 0">
+  <div class="container" style="max-width:560px;text-align:center">
+    <div data-aos="fade-up">
+      <h2 class="section-heading" data-sf-field="heading">${d.heading||'Stay in the loop'}</h2>
+      <p class="section-sub" data-sf-field="subtext" style="margin:8px auto 28px">${d.subtext||''}</p>
+      <form action="${action}" method="POST" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        ${d.provider==='web3forms' && d.endpoint?`<input type="hidden" name="access_key" value="${d.endpoint}">`:''}
+        <input type="email" name="email" required placeholder="you@email.com" style="flex:1;min-width:240px;padding:13px 16px;border-radius:var(--radius);border:1px solid ${dark?'#333':'#ddd'};background:${dark?'#1a1a1a':'#fff'};color:inherit;font-size:14px;outline:none">
+        <button type="submit" class="btn btn-primary">${d.buttonText||'Subscribe'}</button>
+      </form>
+    </div>
+  </div>
+</section>`
+    }
 
     default: return `<section style="padding:60px 0"><div class="container"><p>Section: ${sec.type}</p></div></section>`
   }
@@ -368,10 +517,88 @@ function aosScript(): string {
 </script>`
 }
 
+function renderJsonLd(site: SiteData, page: Page): string {
+  if (page.slug !== '/') return ''
+  const profile = getProfile(site)
+  const contact = site.pages.flatMap(p => p.sections).find(s => s.type === 'contact')?.data
+  const data: any = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: site.name,
+    description: site.tagline,
+    url: '',
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: profile.code,
+      streetAddress: contact?.address || '',
+    },
+    priceRange: '$$',
+  }
+  if (contact?.phone) data.telephone = phoneToTelLink(contact.phone, profile).replace('tel:','')
+  if (contact?.email) data.email = contact.email
+  if (contact?.hours) data.openingHours = contact.hours
+  return `<script type="application/ld+json">${JSON.stringify(data)}</script>`
+}
+
+function renderHeadMeta(site: SiteData, page: Page): string {
+  const desc = site.tagline || ''
+  const title = `${page.name} — ${site.name}`
+  const ogImage = site.pages.flatMap(p => p.sections).find(s => s.type === 'hero')?.data?.image || ''
+  return `
+  <meta name="description" content="${escapeHtml(desc)}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(desc)}">
+  ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}">` : ''}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(desc)}">
+  ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}">` : ''}
+  ${site.favicon ? `<link rel="icon" href="${site.favicon}">` : site.logo ? `<link rel="icon" href="${site.logo}">` : ''}
+  ${renderJsonLd(site, page)}`
+}
+
+function renderFloatingWidget(site: SiteData): string {
+  const w = site.widget
+  if (!w || !w.enabled || !w.number || w.channel === 'none') return ''
+  const profile = getProfile(site)
+  let href = '#'
+  if (w.channel === 'whatsapp') {
+    const num = phoneToWhatsApp(w.number, profile)
+    href = `https://wa.me/${num}${w.message?`?text=${encodeURIComponent(w.message)}`:''}`
+  } else if (w.channel === 'sms') {
+    const link = phoneToTelLink(w.number, profile).replace('tel:','sms:')
+    href = w.message ? `${link}?body=${encodeURIComponent(w.message)}` : link
+  } else if (w.channel === 'tel') {
+    href = phoneToTelLink(w.number, profile)
+  }
+  const bg = w.channel === 'whatsapp' ? '#25D366' : 'var(--primary)'
+  const icon = w.channel === 'whatsapp'
+    ? `<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.821 11.821 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.687-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.512 5.26l-.999 3.648 3.976-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>`
+    : w.channel === 'sms' ? '💬' : '📞'
+  return `
+<a href="${href}" target="_blank" rel="noopener" aria-label="Contact us"
+  style="position:fixed;bottom:22px;right:22px;width:60px;height:60px;border-radius:50%;background:${bg};color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(0,0,0,.25);z-index:90;text-decoration:none;font-size:26px;transition:transform .15s">
+  ${icon}
+</a>`
+}
+
+function renderCookieBanner(site: SiteData): string {
+  const profile = getProfile(site)
+  // Skip the banner if there's no privacy law that requires it (none of ours).
+  return `
+<div id="sf-cookies" style="position:fixed;bottom:0;left:0;right:0;background:#111;color:#fff;padding:14px 20px;display:none;align-items:center;gap:14px;z-index:80;flex-wrap:wrap;font-family:'Inter',system-ui,sans-serif">
+  <span style="flex:1;min-width:240px;font-size:13px;line-height:1.5">We use cookies to make this site work and analyse traffic. By using the site you agree to our use of cookies under ${profile.privacyLaw}.</span>
+  <a href="#privacy" style="color:#aaa;font-size:13px;text-decoration:underline">Learn more</a>
+  <button type="button" onclick="localStorage.setItem('sf-cookies-ok','1');this.parentElement.style.display='none'" style="background:var(--primary);color:#fff;border:none;padding:8px 18px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer">Accept</button>
+</div>
+<script>(function(){if(!localStorage.getItem('sf-cookies-ok')){document.getElementById('sf-cookies').style.display='flex'}})();</script>`
+}
+
 export function renderPage(site: SiteData, page: Page, interactive = false): string {
   const theme = site.theme
   const sectionsHtml = page.sections.map(sec => {
-    const h = renderSection(sec, theme)
+    const h = renderSection(sec, theme, site)
     return interactive ? wrapSection(sec.id, h) : h
   }).join('\n')
 
@@ -482,7 +709,7 @@ export function renderPage(site: SiteData, page: Page, interactive = false): str
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${page.name} — ${site.name}</title>
-  <meta name="description" content="${site.tagline}">
+  ${renderHeadMeta(site, page)}
   ${aosScript().split('<script')[0]}
   <style>${css(theme)}</style>
 </head>
@@ -490,6 +717,8 @@ export function renderPage(site: SiteData, page: Page, interactive = false): str
   ${nav(site, page, theme)}
   ${sectionsHtml}
   ${footer(site, theme)}
+  ${interactive ? '' : renderFloatingWidget(site)}
+  ${interactive ? '' : renderCookieBanner(site)}
   ${aosScript().split('</link>').slice(1).join('')}
   ${interactiveScript}
 </body>
@@ -502,5 +731,14 @@ export function exportSite(site: SiteData): Record<string, string> {
     const filename = page.slug === '/' ? 'index.html' : page.slug.slice(1) + '.html'
     files[filename] = renderPage(site, page, false)
   })
+  // sitemap.xml — relative URLs since the user will host wherever
+  const lastmod = new Date().toISOString().slice(0, 10)
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${site.pages.map(p => `  <url><loc>${p.slug==='/'?'index.html':p.slug.slice(1)+'.html'}</loc><lastmod>${lastmod}</lastmod></url>`).join('\n')}
+</urlset>`
+  files['sitemap.xml'] = sitemap
+  // robots.txt — allow all
+  files['robots.txt'] = `User-agent: *\nAllow: /\nSitemap: sitemap.xml\n`
   return files
 }

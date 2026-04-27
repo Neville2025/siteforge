@@ -11,9 +11,24 @@ export default async function handler(req, res) {
 
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY in the deployment environment.' })
 
-  const { name, industry, description, services, phone, email, address, primaryColor, secondaryColor, tone, audit } = req.body
+  const { name, industry, description, services, phone, email, address, primaryColor, secondaryColor, tone, audit, country } = req.body
 
   if (!name && !audit?.name) return res.status(400).json({ error: 'Business name required' })
+
+  // Country-specific prompt addendum so AI generates locally-appropriate copy.
+  const COUNTRY_HINTS = {
+    ZA: { currency:'ZAR', symbol:'R', law:'POPIA', cities:'Johannesburg, Cape Town, Durban', names:'Sarah Johnson, Sipho Dlamini, Thandi Naidoo, Andile Mokoena', tax:'VAT 15%', extra:'Use SA terms (panel beater, geyser, load shedding awareness).' },
+    NG: { currency:'NGN', symbol:'₦', law:'NDPA', cities:'Lagos, Abuja, Port Harcourt', names:'Adeola Bakare, Chinedu Okafor, Aisha Bello, Tunde Adeyemi', tax:'VAT 7.5%', extra:'Common payment: bank transfer, POS, USSD.' },
+    KE: { currency:'KES', symbol:'KSh', law:'DPA Kenya', cities:'Nairobi, Mombasa, Kisumu', names:'Wanjiru Kamau, Otieno Onyango, Aisha Hassan, Brian Mutua', tax:'VAT 16%', extra:'Common payment: M-Pesa Paybill/Till.' },
+    IN: { currency:'INR', symbol:'₹', law:'DPDP/PDPA', cities:'Mumbai, Bangalore, Delhi, Pune, Hyderabad', names:'Priya Sharma, Arjun Patel, Anjali Reddy, Vikram Iyer', tax:'GST 18%', extra:'Use UPI as primary payment method. Use Indian English.' },
+    BR: { currency:'BRL', symbol:'R$', law:'LGPD', cities:'São Paulo, Rio de Janeiro, Belo Horizonte', names:'Carla Silva, João Santos, Ana Oliveira, Bruno Costa', tax:'IVA 17%', extra:'Use Portuguese where appropriate. Common payment: PIX.' },
+    US: { currency:'USD', symbol:'$', law:'CCPA', cities:'New York, Los Angeles, Chicago, Houston', names:'Sarah Johnson, Michael Davis, Emily Rodriguez, Brandon Kim', tax:'sales tax 7%', extra:'Use US English (gas station, realtor, auto body shop).' },
+    GB: { currency:'GBP', symbol:'£', law:'UK GDPR', cities:'London, Manchester, Birmingham', names:'Sarah Thompson, James Walker, Emma Patel, Oliver Smith', tax:'VAT 20%', extra:'Use UK English (estate agent, solicitor, petrol).' },
+    AU: { currency:'AUD', symbol:'A$', law:'APP', cities:'Sydney, Melbourne, Brisbane', names:'Sarah Wilson, Liam Murphy, Chloe Nguyen, Jack Thompson', tax:'GST 10% (incl)', extra:'Use Aussie English (tradie, ute).' },
+    CA: { currency:'CAD', symbol:'C$', law:'PIPEDA', cities:'Toronto, Vancouver, Montréal', names:'Sarah MacDonald, Michael Tremblay, Priya Singh, Jacob Brown', tax:'GST 13%', extra:'Acknowledge bilingual context.' },
+    DE: { currency:'EUR', symbol:'€', law:'GDPR/DSGVO', cities:'Berlin, München, Hamburg', names:'Sarah Müller, Lukas Schmidt, Anna Weber, Felix Becker', tax:'VAT 19% (Mehrwertsteuer)', extra:'Decimal comma. Place € after the number.' },
+  }
+  const hint = COUNTRY_HINTS[country] || COUNTRY_HINTS.ZA
 
   const business = {
     name: name || audit?.name,
@@ -101,12 +116,20 @@ Services they offer: ${business.services}
 Contact: phone ${business.phone}, email ${business.email}, located ${business.address}
 Brand: ${business.tone} tone, primary color ${business.primaryColor}
 
+Country: ${country || 'ZA'}
+Currency: ${hint.currency} (symbol "${hint.symbol}")
+Privacy law: ${hint.law}
+Tax: ${hint.tax}
+Use these realistic names: ${hint.names}
+Reference these cities (when location-relevant): ${hint.cities}
+${hint.extra}
+
 Write COMPELLING, INDUSTRY-SPECIFIC content. NOT generic placeholders. Every line should be specific to ${business.name} and ${business.industry}.
 
-For testimonials: realistic South African names, real-sounding company titles, specific quotes about ${business.industry}.
-For team: realistic names, appropriate roles, brief bios.
+For testimonials: realistic local names from the list above, real-sounding company titles, specific quotes about ${business.industry}.
+For team: realistic local names, appropriate roles, brief bios.
 For services: industry-specific icons (emojis), specific titles and descriptions.
-For pricing: appropriate prices in ZAR.
+For pricing: appropriate prices using "${hint.symbol}" symbol and ${hint.currency} amounts that match local market reality.
 For images: real Unsplash URLs relevant to ${business.industry} (e.g. https://images.unsplash.com/photo-XXX?w=1400&q=80).
 For stats: impressive but realistic for ${business.industry}.
 

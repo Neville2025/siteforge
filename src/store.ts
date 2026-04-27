@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
-import type { SiteData, Page, Section, SectionType, Theme } from './types'
+import type { SiteData, Page, Section, SectionType, Theme, FloatingWidget } from './types'
 import { SECTION_DEFS } from './sections'
+import { DEFAULT_COUNTRY, type CountryCode } from './locale/profiles'
 
 const DEFAULT_THEME: Theme = {
   primaryColor: '#2563eb', secondaryColor: '#7c3aed', accentColor: '#06b6d4',
@@ -17,17 +18,27 @@ const makePage = (name: string, slug: string, sectionTypes: SectionType[]): Page
   }))
 })
 
+const DEFAULT_WIDGET: FloatingWidget = {
+  enabled: false,
+  channel: 'whatsapp',
+  number: '',
+  message: 'Hi, I came from your website and wanted to ask...',
+}
+
 const DEFAULT_SITE: SiteData = {
   id: uuid(),
   name: 'Your Business',
   tagline: 'Professional services you can trust',
   logo: '',
+  favicon: '',
+  country: DEFAULT_COUNTRY,
   theme: DEFAULT_THEME,
+  widget: DEFAULT_WIDGET,
   pages: [
     makePage('Home', '/', ['hero', 'stats', 'services', 'about', 'testimonials', 'cta']),
     makePage('About', '/about', ['about', 'team', 'stats', 'cta']),
     makePage('Services', '/services', ['hero', 'services', 'features', 'pricing', 'cta']),
-    makePage('Contact', '/contact', ['contact']),
+    makePage('Contact', '/contact', ['contact', 'maps']),
   ]
 }
 
@@ -45,6 +56,9 @@ interface BuilderState {
   setSiteName: (name: string) => void
   setSiteTagline: (tagline: string) => void
   setSiteLogo: (logo: string) => void
+  setFavicon: (favicon: string) => void
+  setCountry: (code: CountryCode) => void
+  setWidget: (widget: Partial<FloatingWidget>) => void
   setTheme: (theme: Partial<Theme>) => void
 
   // Page actions
@@ -87,6 +101,9 @@ export const useStore = create<BuilderState>()(
       setSiteName: (name) => set(s => ({ site: { ...s.site, name } })),
       setSiteTagline: (tagline) => set(s => ({ site: { ...s.site, tagline } })),
       setSiteLogo: (logo: string) => set(s => ({ site: { ...s.site, logo } })),
+      setFavicon: (favicon: string) => set(s => ({ site: { ...s.site, favicon } })),
+      setCountry: (code: CountryCode) => set(s => ({ site: { ...s.site, country: code } })),
+      setWidget: (widget: Partial<FloatingWidget>) => set(s => ({ site: { ...s.site, widget: { ...(s.site.widget || DEFAULT_WIDGET), ...widget } } })),
       setTheme: (theme) => set(s => ({ site: { ...s.site, theme: { ...s.site.theme, ...theme } } })),
 
       setActivePage: (id) => set({ activePageId: id, activeSectionId: null }),

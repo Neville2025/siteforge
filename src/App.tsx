@@ -6,6 +6,7 @@ import { SECTION_DEFS, SECTION_GROUPS } from './sections'
 import { BLOCKS, BLOCK_CATEGORIES, type Block } from './blocks'
 import { exportSite, renderPage } from './renderer'
 import { IMAGES, IMAGE_CATEGORIES, searchImages, type LibraryImage } from './imageLibrary'
+import { COUNTRY_LIST, COUNTRIES, DEFAULT_COUNTRY, type CountryCode } from './locale/profiles'
 import { v4 as uuid } from 'uuid'
 import type { SectionType, Theme } from './types'
 import './index.css'
@@ -345,6 +346,46 @@ function RightPanel({ B, openImagePicker }: { B: typeof DARK; openImagePicker: (
               {store.site.logo && (
                 <Btn color='ghost' onClick={()=>store.setSiteLogo('')} style={{ marginTop:6 }}>Remove logo</Btn>
               )}
+            </div>
+
+            <div>
+              <Label>Favicon (browser tab icon)</Label>
+              {store.site.favicon && <img src={store.site.favicon} alt="favicon" style={{ width:32, height:32, objectFit:'contain', borderRadius:6, background:B.surface, padding:4, marginBottom:8, display:'block' }} />}
+              <input type="file" accept="image/png,image/svg+xml,image/x-icon,image/jpeg,image/webp" onChange={e=>{
+                const file = e.target.files?.[0]; if (!file) return
+                if (file.size > 256 * 1024) { alert('Favicon too large (max 256KB).'); return }
+                const reader = new FileReader()
+                reader.onload = () => store.setFavicon(String(reader.result))
+                reader.readAsDataURL(file)
+                e.currentTarget.value = ''
+              }}
+              style={{ ...inp, padding:6, fontSize:11 }} />
+              <div style={{ fontSize:10, color:B.muted, marginTop:4, lineHeight:1.5 }}>If empty, your logo is used. PNG/SVG recommended, under 256 KB.</div>
+            </div>
+
+            <div>
+              <Label>Country</Label>
+              <select value={store.site.country || DEFAULT_COUNTRY} onChange={e=>store.setCountry(e.target.value as CountryCode)} style={inp}>
+                {COUNTRY_LIST.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name} — {c.currencySymbol} {c.currencyCode}</option>)}
+              </select>
+              <div style={{ fontSize:10, color:B.muted, marginTop:4, lineHeight:1.5 }}>Drives currency labels, phone format, privacy law, and AI prompt locale.</div>
+            </div>
+
+            <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:12 }}>
+              <Label>Floating contact widget</Label>
+              <label style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <input type="checkbox" checked={!!store.site.widget?.enabled} onChange={e=>store.setWidget({ enabled: e.target.checked })} />
+                <span style={{ fontSize:12, fontWeight:600 }}>Show on every page</span>
+              </label>
+              {store.site.widget?.enabled && <>
+                <select value={store.site.widget.channel} onChange={e=>store.setWidget({ channel: e.target.value as any })} style={{ ...inp, marginBottom:6 }}>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="sms">SMS</option>
+                  <option value="tel">Phone call</option>
+                </select>
+                <input value={store.site.widget.number} onChange={e=>store.setWidget({ number: e.target.value })} placeholder="Phone number (e.g. 0710000000)" style={{ ...inp, marginBottom:6 }} />
+                <textarea rows={2} value={store.site.widget.message} onChange={e=>store.setWidget({ message: e.target.value })} placeholder="Pre-filled message..." style={{ ...inp, resize:'vertical' }} />
+              </>}
             </div>
 
             <div>
@@ -895,6 +936,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
   const [address, setAddress] = useState('')
   const [primaryColor, setPrimaryColor] = useState('#2563eb')
   const [tone, setTone] = useState('professional')
+  const [country, setCountry] = useState<CountryCode>(store.site.country as CountryCode || DEFAULT_COUNTRY)
   const [building, setBuilding] = useState(false)
   const [step, setStep] = useState('')
   const [error, setError] = useState('')
@@ -904,18 +946,18 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
   const build = async () => {
     setBuilding(true); setError('')
     try {
-      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone }
+      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone, country }
       let auditData: any = null
       if (mode === 'url' && url.trim()) {
         setStep('Analyzing existing website...')
         const r = await fetch('/api/analyze', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ url: url.trim() })
+          body: JSON.stringify({ url: url.trim(), country })
         })
         const audit = await r.json()
         if (!r.ok) throw new Error(audit.error || 'Analysis failed')
         auditData = audit
-        payload = { audit }
+        payload = { audit, country }
       }
       setStep('AI is designing your full website... (~30 seconds)')
       const res = await fetch('/api/build-site', {
@@ -956,6 +998,8 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
 
       const site = {
         id: 'gen', name: businessName, tagline: content.tagline || auditData?.tagline || '', logo: '',
+        country,
+        widget: { enabled: !!businessPhone, channel: 'whatsapp' as const, number: businessPhone, message: `Hi, I came from your ${businessName} website and wanted to ask...` },
         theme: {
           primaryColor: businessPrimary,
           secondaryColor: content.accentColor || auditData?.secondaryColor || '#7c3aed',
@@ -987,7 +1031,12 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
             { type:'cta', data: { heading:'Ready to Get Started?', subtext:'Contact us today for a free consultation.', ctaText: content.ctaText, ctaUrl:'#contact', ctaText2:'' } },
           ]},
           { name:'Contact', slug:'/contact', sections: [
-            { type:'contact', data: { heading:'Get in Touch', subtext:'We would love to hear from you. Send us a message.', phone: businessPhone, email: businessEmail, address: businessAddress, hours:'Monday – Friday, 8:00am – 5:00pm SAST' } },
+            { type:'contact', data: { heading:'Get in Touch', subtext:'We would love to hear from you. Send us a message.', phone: businessPhone, email: businessEmail, address: businessAddress, hours:'Monday – Friday, 8:00am – 5:00pm', formKey:'' } },
+            { type:'maps', data: { heading:'Find Us', subtext:'', address: businessAddress, embedUrl:'' } },
+            { type:'whatsapp', data: { heading:'Chat with us on WhatsApp', subtext:'Skip the form — message us directly. We typically reply within an hour during business hours.', number: businessPhone, message: `Hi, I came from your ${businessName} website and wanted to ask...`, buttonText:'Open WhatsApp' } },
+          ]},
+          { name:'Privacy', slug:'/privacy', sections: [
+            { type:'policy', data: { heading:'Privacy Policy', autoGenerate:true, customBody:'' } },
           ]},
         ]
       }
@@ -1017,6 +1066,14 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         </div>
 
         {!building && <>
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:5 }}>Country</div>
+            <select value={country} onChange={e=>setCountry(e.target.value as CountryCode)} style={inp}>
+              {COUNTRY_LIST.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name} — {c.currencyCode}</option>)}
+            </select>
+            <div style={{ fontSize:10, color:B.muted, marginTop:4, lineHeight:1.5 }}>AI uses local names, currency ({COUNTRIES[country].currencySymbol}), idioms, and the right privacy law ({COUNTRIES[country].privacyLaw}).</div>
+          </div>
+
           <div style={{ display:'flex', gap:6, marginBottom:18 }}>
             <button onClick={()=>setMode('manual')} style={{ flex:1, padding:'10px', borderRadius:9, border:`1px solid ${mode==='manual'?B.green:B.border}`, background:mode==='manual'?`${B.green}15`:B.card, color:mode==='manual'?B.green:B.text, fontSize:12, fontWeight:700, cursor:'pointer' }}>
               📝 Enter business info

@@ -8,6 +8,17 @@ export interface Theme {
   style: 'light' | 'dark'
 }
 
+export interface FloatingWidget {
+  /** Show a floating bottom-right widget on the public site */
+  enabled: boolean
+  /** Channel: whatsapp uses wa.me/<number>, sms uses sms:<number> */
+  channel: 'whatsapp' | 'sms' | 'tel' | 'none'
+  /** Phone number (digits only or with country code). Country profile fills the rest. */
+  number: string
+  /** Pre-filled message (URL-encoded by renderer) */
+  message: string
+}
+
 export interface MediaItem {
   url: string
   alt: string
@@ -23,6 +34,7 @@ export type SectionType =
   | 'hero' | 'services' | 'about' | 'stats' | 'testimonials'
   | 'gallery' | 'pricing' | 'team' | 'faq' | 'cta' | 'contact'
   | 'features' | 'custom21st'
+  | 'whatsapp' | 'banking' | 'policy' | 'maps' | 'newsletter'
 
 export interface Page {
   id: string
@@ -36,7 +48,13 @@ export interface SiteData {
   name: string
   tagline: string
   logo: string
+  /** Optional favicon as data URL or remote URL. If empty, logo is used. */
+  favicon?: string
+  /** Country code (ISO 3166-1 alpha-2). Drives currency, phone format, privacy law, AI prompt locale. */
+  country?: string
   theme: Theme
+  /** Optional floating contact widget shown on every page */
+  widget?: FloatingWidget
   pages: Page[]
 }
 

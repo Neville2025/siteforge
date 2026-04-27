@@ -148,11 +148,13 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
     fields: [
       { key:'heading', label:'Heading', type:'text', placeholder:'Our Packages' },
       { key:'subheading', label:'Subheading', type:'text', placeholder:'Choose the plan that suits you' },
+      { key:'taxIncluded', label:'Prices include tax', type:'boolean', hint:'Adds an "incl. VAT/GST" label below each price.' },
       { key:'items', label:'Plans', type:'list' },
     ],
     defaultData: {
       heading: 'Our Packages',
       subheading: 'Transparent pricing with no hidden fees. Choose the package that works for your business.',
+      taxIncluded: true,
       items: [
         { name:'Starter', price:'R2,500', period:'/month', features:['Feature one','Feature two','Feature three','Email support'], cta:'Get Started', highlighted:false },
         { name:'Professional', price:'R5,500', period:'/month', features:['Everything in Starter','Feature four','Feature five','Priority support','Monthly report'], cta:'Get Started', highlighted:true },
@@ -233,6 +235,96 @@ export const SECTION_DEFS: Record<string, SectionDefinition> = {
       formKey: '',
     }
   },
+
+  whatsapp: {
+    type: 'whatsapp', name: 'WhatsApp Chat', icon: '💬', description: 'Click-to-chat card with WhatsApp',
+    fields: [
+      { key:'heading', label:'Heading', type:'text', placeholder:'Chat with us on WhatsApp' },
+      { key:'subtext', label:'Subtext', type:'textarea', placeholder:'We typically reply within an hour during business hours.' },
+      { key:'number', label:'Phone (with country code or local)', type:'text', placeholder:'+27 11 000 0000' },
+      { key:'message', label:'Pre-filled message', type:'textarea', placeholder:'Hi, I would like more information about...' },
+      { key:'buttonText', label:'Button text', type:'text', placeholder:'Open WhatsApp' },
+    ],
+    defaultData: {
+      heading:'Chat with us on WhatsApp',
+      subtext:'Skip the form — message us directly. We typically reply within an hour during business hours.',
+      number:'',
+      message:'Hi, I would like more information about your services.',
+      buttonText:'Open WhatsApp',
+    }
+  },
+
+  banking: {
+    type: 'banking', name: 'Banking / EFT Details', icon: '🏦', description: 'Payment & banking details for direct transfers',
+    fields: [
+      { key:'heading', label:'Heading', type:'text', placeholder:'Banking Details' },
+      { key:'subtext', label:'Subtext', type:'textarea', placeholder:'Use these details for direct EFT payments.' },
+      { key:'accountName', label:'Account name', type:'text', placeholder:'Your Business (Pty) Ltd' },
+      { key:'bank', label:'Bank', type:'text', placeholder:'FNB / ABSA / Standard Bank' },
+      { key:'accountNumber', label:'Account number', type:'text', placeholder:'62000000000' },
+      { key:'branchCode', label:'Branch / IFSC / Sort code', type:'text', placeholder:'250655' },
+      { key:'reference', label:'Reference instructions', type:'text', placeholder:'Use your invoice number as reference' },
+      { key:'extra', label:'Extra payment methods (one per line)', type:'textarea', placeholder:'M-Pesa Paybill: 123456\nUPI: mybusiness@bank' },
+    ],
+    defaultData: {
+      heading:'Banking Details',
+      subtext:'For EFT payments, use the details below. Please use your invoice number or surname as the reference.',
+      accountName:'',
+      bank:'',
+      accountNumber:'',
+      branchCode:'',
+      reference:'Use your invoice number or surname as the reference.',
+      extra:'',
+    }
+  },
+
+  policy: {
+    type: 'policy', name: 'Privacy Policy', icon: '📜', description: 'Auto-generated privacy policy for your country',
+    fields: [
+      { key:'heading', label:'Heading', type:'text', placeholder:'Privacy Policy' },
+      { key:'autoGenerate', label:'Auto-generate from your country profile', type:'boolean', hint:'Recommended. Toggle off to write custom text.' },
+      { key:'customBody', label:'Custom body (Markdown supported, used if auto-generate is off)', type:'textarea', placeholder:'## Section\nYour custom policy text...' },
+    ],
+    defaultData: {
+      heading:'Privacy Policy',
+      autoGenerate: true,
+      customBody:'',
+    }
+  },
+
+  maps: {
+    type: 'maps', name: 'Google Maps', icon: '🗺️', description: 'Embedded map of your business location',
+    fields: [
+      { key:'heading', label:'Heading', type:'text', placeholder:'Find Us' },
+      { key:'subtext', label:'Subtext', type:'textarea', placeholder:'Visit us in person.' },
+      { key:'address', label:'Address (used for the map query)', type:'text', placeholder:'Sandton, Johannesburg' },
+      { key:'embedUrl', label:'Or paste a Google Maps embed URL (overrides address)', type:'url', placeholder:'https://www.google.com/maps/embed?...' },
+    ],
+    defaultData: {
+      heading:'Find Us',
+      subtext:'',
+      address:'',
+      embedUrl:'',
+    }
+  },
+
+  newsletter: {
+    type: 'newsletter', name: 'Newsletter Signup', icon: '✉️', description: 'Email signup that posts to your provider',
+    fields: [
+      { key:'heading', label:'Heading', type:'text', placeholder:'Stay in the loop' },
+      { key:'subtext', label:'Subtext', type:'textarea', placeholder:'Monthly updates, no spam.' },
+      { key:'buttonText', label:'Button text', type:'text', placeholder:'Subscribe' },
+      { key:'provider', label:'Provider', type:'select', options:['mailto','formsubmit','web3forms','custom'], hint:'Mailto opens an email; the others post the email to a service.' },
+      { key:'endpoint', label:'Provider endpoint or your email', type:'text', placeholder:'you@business.com or https://formsubmit.co/...' },
+    ],
+    defaultData: {
+      heading:'Stay in the loop',
+      subtext:'Monthly updates on our services. No spam — just useful news.',
+      buttonText:'Subscribe',
+      provider:'mailto',
+      endpoint:'',
+    }
+  },
 }
 
 export const SECTION_GROUPS = [
@@ -240,5 +332,6 @@ export const SECTION_GROUPS = [
   { label: 'Content', types: ['about', 'features', 'stats'] },
   { label: 'Services & Products', types: ['services', 'pricing'] },
   { label: 'Social Proof', types: ['testimonials', 'team', 'gallery'] },
-  { label: 'Conversion', types: ['cta', 'faq', 'contact'] },
+  { label: 'Conversion', types: ['cta', 'faq', 'contact', 'whatsapp', 'newsletter'] },
+  { label: 'Logistics', types: ['banking', 'maps', 'policy'] },
 ]

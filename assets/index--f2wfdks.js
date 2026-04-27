@@ -797,7 +797,7 @@ ${u?u+`
   ${Cd().split(`</link>`).slice(1).join(``)}
   ${a}
 </body>
-</html>`}function kd(e,t){let n=e.pages.map(e=>e.slug===`/`?`index.html`:e.slug.slice(1)+`.html`),r=e.pages.map(t=>Od(e,t,!1)),i={};n.forEach((e,t)=>{i[e]=r[t]});let a=t?e.pages.findIndex(e=>e.id===t):0,o=n[a>=0?a:0],s=JSON.stringify(i),c=JSON.stringify(o);return`<!DOCTYPE html>
+</html>`}function kd(e,t){let n=e.pages.map(e=>e.slug===`/`?`index.html`:e.slug.slice(1)+`.html`),r=e.pages.map(t=>Od(e,t,!1)),i={};n.forEach((e,t)=>{i[e]=r[t]});let a=t?e.pages.findIndex(e=>e.id===t):0,o=n[a>=0?a:0],s=(e=>e.replace(/<\/(script|style)/gi,`<\\/$1`).replace(/<!--/g,`<\\!--`))(JSON.stringify(i)),c=JSON.stringify(o);return`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">

@@ -11,7 +11,10 @@ export default async function handler(req, res) {
 
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY in the deployment environment.' })
 
-  const { name, industry, description, services, phone, email, address, primaryColor, secondaryColor, tone, audit, country, persona } = req.body
+  const { name, industry, description, services, phone, email, address, primaryColor, secondaryColor, tone, audit, country, persona, brandVoice } = req.body
+  const voiceBlock = brandVoice && brandVoice.trim().length > 30
+    ? `\n\n═══════════════════════════════\nBRAND VOICE (match this tone exactly)\n═══════════════════════════════\nThe business owner has provided these examples of their existing writing. Match the vocabulary, sentence rhythm, energy, and formality of these examples in everything you write — do not invent a different "voice".\n\n"""\n${String(brandVoice).slice(0, 3000)}\n"""\n`
+    : ''
   const PERSONA_PROMPTS = {
     minimal:    'Minimal aesthetic. Lots of whitespace. Restrained typography. Subtle motion. Lighter palette unless dark requested. Use Inter/Inter, small radius.',
     bold:       'Bold and confident. High-contrast. Big type. Full-bleed sections. Use Poppins/Inter, medium radius, dark palette friendly.',
@@ -238,7 +241,7 @@ Reference these cities (when location-relevant): ${hint.cities}
 ${hint.extra}
 
 DESIGN PERSONA: ${persona || 'minimal'}. ${personaHint}
-
+${voiceBlock}
 Write COMPELLING, INDUSTRY-SPECIFIC content. NOT generic placeholders. Every line should be specific to ${business.name} and ${business.industry}.
 
 For testimonials: realistic local names from the list above, real-sounding company titles, specific quotes about ${business.industry}.

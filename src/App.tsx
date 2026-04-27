@@ -221,6 +221,7 @@ function RightPanel({ B, openImagePicker }: { B: typeof DARK; openImagePicker: (
           siteName: store.site.name,
           prompt: text,
           fields: def?.fields || [],
+          brandVoice: store.site.brandVoice || '',
         })
       })
       const data = await res.json()
@@ -383,6 +384,17 @@ function RightPanel({ B, openImagePicker }: { B: typeof DARK; openImagePicker: (
                 {COUNTRY_LIST.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name} — {c.currencySymbol} {c.currencyCode}</option>)}
               </select>
               <div style={{ fontSize:10, color:B.muted, marginTop:4, lineHeight:1.5 }}>Drives currency labels, phone format, privacy law, and AI prompt locale.</div>
+            </div>
+
+            <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:12 }}>
+              <Label>✦ Brand voice (paste 2–3 things you have written)</Label>
+              <textarea rows={6} value={store.site.brandVoice || ''} onChange={e=>store.setBrandVoice(e.target.value)}
+                placeholder={`Paste a few paragraphs of your real writing — old emails, social posts, brochures, an "about" you have written before. AI will match the tone, vocabulary, and rhythm in everything it writes for you.\n\nExample:\nWe are a family-run plumbing crew based in Krugersdorp...\n(your paragraph 2)\n(your paragraph 3)`}
+                style={{ ...inp, resize:'vertical', fontSize:12, lineHeight:1.6, fontFamily:'inherit' }} />
+              <div style={{ fontSize:10, color:B.muted, marginTop:6, lineHeight:1.5 }}>
+                Used by Magic Build, Magic Edit, and section-AI to match your tone. Leave empty to use defaults.
+                {store.site.brandVoice && store.site.brandVoice.length > 50 && <span style={{ color:B.green, fontWeight:700, display:'block', marginTop:4 }}>✓ {store.site.brandVoice.length} characters · AI will match this style</span>}
+              </div>
             </div>
 
             <div style={{ background:B.card, border:`1px solid ${B.border}`, borderRadius:10, padding:12 }}>
@@ -1023,6 +1035,7 @@ function MagicEditPageModal({ B, onClose }: { B: typeof DARK; onClose: () => voi
           instruction: text,
           businessName: store.site.name,
           industry: '',
+          brandVoice: store.site.brandVoice || '',
         })
       })
       if (!res.ok) {
@@ -1142,7 +1155,8 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
     try {
       const resolvedPersonaId: PersonaId = persona === 'auto' ? pickPersona(industry || '') : persona
       const resolvedPersona = PERSONAS[resolvedPersonaId]
-      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone, country, persona: resolvedPersonaId }
+      const brandVoice = store.site.brandVoice || ''
+      let payload: any = { name, industry, description, services, phone, email, address, primaryColor, tone, country, persona: resolvedPersonaId, brandVoice }
       let auditData: any = null
       if (mode === 'url' && url.trim()) {
         setStep('Analyzing existing website...')
@@ -1153,7 +1167,7 @@ function MagicBuildModal({ B, onClose }: { B: typeof DARK; onClose: () => void }
         const audit = await r.json()
         if (!r.ok) throw new Error(audit.error || 'Analysis failed')
         auditData = audit
-        payload = { audit, country, persona: resolvedPersonaId }
+        payload = { audit, country, persona: resolvedPersonaId, brandVoice }
       }
       setStep('AI is designing your full website... (~30 seconds)')
       const res = await fetch('/api/build-site', {

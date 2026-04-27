@@ -58,6 +58,7 @@ interface BuilderState {
   setSiteLogo: (logo: string) => void
   setFavicon: (favicon: string) => void
   setCountry: (code: CountryCode) => void
+  setBrandVoice: (voice: string) => void
   setWidget: (widget: Partial<FloatingWidget>) => void
   setTheme: (theme: Partial<Theme>) => void
 
@@ -103,6 +104,7 @@ export const useStore = create<BuilderState>()(
       setSiteLogo: (logo: string) => set(s => ({ site: { ...s.site, logo } })),
       setFavicon: (favicon: string) => set(s => ({ site: { ...s.site, favicon } })),
       setCountry: (code: CountryCode) => set(s => ({ site: { ...s.site, country: code } })),
+      setBrandVoice: (voice: string) => set(s => ({ site: { ...s.site, brandVoice: voice } })),
       setWidget: (widget: Partial<FloatingWidget>) => set(s => ({ site: { ...s.site, widget: { ...(s.site.widget || DEFAULT_WIDGET), ...widget } } })),
       setTheme: (theme) => set(s => ({ site: { ...s.site, theme: { ...s.site.theme, ...theme } } })),
 

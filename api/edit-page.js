@@ -11,8 +11,11 @@ export default async function handler(req, res) {
 
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY in the deployment environment.' })
 
-  const { sections, instruction, businessName, industry } = req.body
+  const { sections, instruction, businessName, industry, brandVoice } = req.body
   if (!sections || !instruction) return res.status(400).json({ error: 'sections and instruction required' })
+  const voiceBlock = brandVoice && brandVoice.trim().length > 30
+    ? `\n\nBRAND VOICE (match this tone). Examples of how this business actually writes:\n"""\n${String(brandVoice).slice(0, 2000)}\n"""\nMatch the vocabulary and rhythm of these examples in your edits.`
+    : ''
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -55,7 +58,7 @@ Current sections on this page (with index numbers):
 ${sections.map((s, i) => `${i}. ${s.type} — current data: ${JSON.stringify(s.data).slice(0, 600)}`).join('\n\n')}
 
 User instruction: ${instruction}
-
+${voiceBlock}
 Apply this instruction by updating the relevant section(s). Only return sections that need changes. Match the EXACT data structure of each section type. Be specific — write real industry-relevant copy, not generic placeholders.
 
 Use the update_page tool.`

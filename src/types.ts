@@ -52,6 +52,8 @@ export interface SiteData {
   favicon?: string
   /** Country code (ISO 3166-1 alpha-2). Drives currency, phone format, privacy law, AI prompt locale. */
   country?: string
+  /** 2-3 short paragraphs the user wrote elsewhere — fed into AI prompts so generated copy matches their tone. */
+  brandVoice?: string
   theme: Theme
   /** Optional floating contact widget shown on every page */
   widget?: FloatingWidget

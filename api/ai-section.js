@@ -11,8 +11,11 @@ export default async function handler(req, res) {
 
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY in the deployment environment.' })
 
-  const { sectionType, currentData, siteName, prompt, fields } = req.body
+  const { sectionType, currentData, siteName, prompt, fields, brandVoice } = req.body
   if (!sectionType || !prompt) return res.status(400).json({ error: 'Missing required fields' })
+  const voiceBlock = brandVoice && brandVoice.trim().length > 30
+    ? `\n\nBRAND VOICE — match this tone:\n"""\n${String(brandVoice).slice(0, 1500)}\n"""\nUse the same vocabulary, sentence length, and energy.`
+    : ''
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -50,7 +53,7 @@ CURRENT DATA:
 ${JSON.stringify(currentData, null, 2)}
 
 USER REQUEST: ${prompt}
-
+${voiceBlock}
 Use the update_section tool to return the updates. Only include fields that should change. Match the existing data structure exactly. Be specific — write real industry-relevant copy, not generic placeholders.`
       }]
     })
